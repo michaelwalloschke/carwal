@@ -10,7 +10,7 @@ Depth from the source draft (`docs/PRD-family-app.md`) that belongs downstream (
 
 ## Data model (→ architecture)
 
-- One `entry` aggregate: nullable `when`/`remind_at`; `type`/`status`/`source` enums; self-referential `parent_id` for idea-attachments.
+- One `entry` aggregate: nullable `when`/`remind_at`; `type`/`status`/`source` enums; self-referential `parent_id` for idea-attachments and manual mail→event linking; `visibility` enum (`family` | `owner_only`, default `family`) on every entry — UI toggle only on idea-notes in v1, AI proposals default `owner_only`.
 - Plain Ecto CRUD (read-your-writes simplicity), **plus** a narrow `entry_revisions` change-log scoped only to feed-ingested entries — surfaces "moved Tue→Thu" instead of silent mutation. Deliberately **not** event-sourced.
 - Chat in its own `messages` table (different volume/access pattern than `entry`).
 - **No `location_history` table, ever.**
@@ -35,7 +35,9 @@ Depth from the source draft (`docs/PRD-family-app.md`) that belongs downstream (
 ## Notifications (→ architecture)
 
 - Web Push (VAPID), one channel for reminders, school entries, chat, location requests. Self-hostable, no Google/Apple dev accounts. Android solid; iOS PWA push weaker — lands only on the partner, who doesn't need it.
-- Scheduling via Oban; jobs survive restarts (FR6).
+- Scheduling via Oban; jobs survive restarts (FR6). Morning digest (FR13) is an Oban cron job at 07:00 Europe/Berlin.
+- Routing defaults (who gets which push) live in the member seed config alongside roles and birthdays; birthdays materialize as yearly recurring entries at seed time.
+- Email whitelist (FR2) is seed config too; non-whitelisted mail stays unread in the mailbox, the IMAP poller only counts it for the feed-health page.
 
 ## Media & storage (→ architecture)
 

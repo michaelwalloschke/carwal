@@ -1,3 +1,5 @@
 .bmad-loop/runs/
 .bmad-loop/cache/
 _bmad/config.user.yaml
+.idea/
+*.iml
