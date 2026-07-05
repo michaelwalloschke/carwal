@@ -144,6 +144,7 @@ graph TD
 | yugo (IMAP) | 1.0.x |
 | ex_nudge (Web Push / VAPID) | 1.0.x |
 | mistral (Req-based client) | 0.5.x |
+| Leaflet (OSM map, vendored asset) | 1.9.x |
 | Caddy (TLS) · Docker Compose | current |
 
 ## Structural Seed
