@@ -5,6 +5,9 @@ config :carwal, CarWal.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
+  # port 5433: local dev carwal-pg container, avoids collision with the
+  # eaf-postgres container bound to 5432 on this host.
+  port: 5433,
   database: "carwal_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,

@@ -49,7 +49,7 @@ story_location: /Users/michael/development/carwal/_bmad-output/implementation-ar
 
 development_status:
   epic-1: in-progress
-  1-1-app-skeleton-from-phoenix-starter: in-progress
+  1-1-app-skeleton-from-phoenix-starter: done
   1-2-magic-link-login-for-seeded-members: backlog
   1-3-deploy-to-the-vps-over-https: backlog
   1-4-pwa-install-push-foundation: backlog

@@ -36,3 +36,13 @@ msgstr "Wir können keine Internetverbindung herstellen"
 #, elixir-autogen, elixir-format
 msgid "close"
 msgstr "Schließen"
+
+#: lib/carwal_web/controllers/page_html/home.html.heex:9
+#, elixir-autogen, elixir-format
+msgid "CarWal is ready."
+msgstr "CarWal ist startklar."
+
+#: lib/carwal_web/controllers/page_html/home.html.heex:12
+#, elixir-autogen, elixir-format
+msgid "The family coordination app is set up. Sign-in and the real UI follow in the next stories."
+msgstr "Die Familien-Koordinations-App steht. Anmeldung und echte Oberfläche folgen in den nächsten Stories."

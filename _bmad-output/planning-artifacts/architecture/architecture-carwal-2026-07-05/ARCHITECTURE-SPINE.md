@@ -139,6 +139,7 @@ graph TD
 | Phoenix LiveView | 1.2.x |
 | Oban (OSS, Cron plugin) | 2.23.x |
 | PostgreSQL | 18.x |
+| tz (tzdata, Europe/Berlin wall-time DB) | ~> 0.28 |
 | ical (ICS parsing) | ~> 2.0 |
 | Swoosh (outbound SMTP, phx default) | bundled |
 | yugo (IMAP) | 1.0.x |

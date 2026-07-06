@@ -4,7 +4,7 @@ baseline_commit: 709f3704f6f3e71053a6f8864a778f59fb39a67c
 
 # Story 1.1: App Skeleton from Phoenix Starter
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -96,6 +96,22 @@ Acceptance Auditor: 8/8 prior findings RESOLVED, 0 new spec deviations. Blind/Ed
 - [x] [Review][Defer] `de/default.po` + `default.pot` lack `Content-Type: text/plain; charset=UTF-8` header [`priv/gettext/de/LC_MESSAGES/default.po`, `priv/gettext/default.pot`] — deferred, pre-existing (matches existing `errors.po` convention; Elixir gettext runtime is UTF-8 regardless; only external PO tooling affected).
 - [x] [Review][Defer] Trailing whitespace on blank line inside inline theme `<script>` [`lib/carwal_web/components/layouts/root.html.heex:36`] — deferred, pre-existing (phx.new generated starter; `mix format` doesn't clean inside script raw blocks).
 
+#### Two-axis review (Standards + Spec) against commit f0dc5b4 (2026-07-06)
+
+Standards axis (vs AGENTS.md + spine + Fowler smell baseline):
+
+- [x] [Review][Patch] Home page German strings hardcoded, not routed through gettext [`lib/carwal_web/controllers/page_html/home.html.heex`] — violates arch-spine "all user-facing strings through gettext from day one". Fixed: converted to canonical English msgids (`gettext("CarWal is ready.")`, `gettext("The family coordination app is set up. …")`) + German translations in `priv/gettext/de/LC_MESSAGES/default.po` ("CarWal ist startklar.", "Die Familien-Koordinations-App steht. Anmeldung und echte Oberfläche folgen in den nächsten Stories."). Rendered page is still German (default_locale `de`); `en` fallback now renders English instead of German. Supersedes Chunk-1's German-in-source (which made gettext a no-op for `de` and broke `en` fallback).
+- [x] [Review][Patch] `<Layouts.flash_group flash={@flash} />` called outside `layouts.ex` (AGENTS.md: forbidden outside the Layouts module) [`lib/carwal_web/controllers/page_html/home.html.heex:1`] — Fixed: removed. Router sets only `put_root_layout` (`:root`), so the controller home page doesn't use `Layouts.app` (whose own `<.flash_group>` at `layouts.ex:71` covers LiveView pages). Flash no longer renders on the throwaway skeleton landing page; acceptable (no flash messages generated, page is replaced in Story 1.2+).
+- [x] [Review][Defer] Inline `<script>` theme block in `<head>` (AGENTS.md: never inline `<script>` in templates) [`lib/carwal_web/components/layouts/root.html.heex:11-39`] — deferred. The script runs pre-paint to set `data-theme` from `localStorage` and avoid FOUC; moving it to deferred `assets/js/app.js` satisfies the no-inline rule but reintroduces a flash-of-unstyled-content on every navigation — a real UX regression, not a reasonable fix. phx.new 1.8.8 generator pattern. Revisit only if a non-inline pre-paint theme mechanism (sync static `<script src>` in head) is adopted.
+- [x] [Review][Patch] `mix.exs` `elixir: "~> 1.15"` vs actual 1.20.2 / spine "Elixir 1.20.x" [`mix.exs:8`] — Fixed: bumped to `~> 1.20`.
+- [x] [Review][Patch] `:tz` dep not listed in spine Stack table [`_bmad-output/.../ARCHITECTURE-SPINE.md` Stack section] — Fixed: added `| tz (tzdata, Europe/Berlin wall-time DB) | ~> 0.28 |` row.
+
+Spec axis (vs this story spec):
+
+- [x] [Review][Patch] AC2 `mix test` never genuinely green — PG 5432 port conflict with `eaf-postgres` (another project's container) blocked `carwal-pg` from binding, so the suite was unverified at prior review passes. Fixed: recreated `carwal-pg` (postgres:18) on host port **5433**; `config/dev.exs` + `config/test.exs` set `port: 5433` (commented rationale); `mix ecto.reset` + `mix test` green — **5 passed**. AC2 satisfied; story cleared for `done`.
+- [x] [Review][Accept] Scope creep — `priv/gettext/de/LC_MESSAGES/default.po` + German home copy go beyond the original spec's "no new tooling / phx.new defaults" (Spec axis flagged). Accepted: the arch-spine "all user-facing strings through gettext from day one" invariant overrides the spec's minimalism; the Chunk-1/2 review already sanctioned this. Not a defect.
+- [x] [Review][Patch] Home strings not gettext-routed (Spec (c), same root as Standards #1) — Fixed via the English-msgid + de.po change above. `live_title` branding (Spec flagged "pages with page_title get zero brand"): kept the re-review fix (no `suffix`, `default="CarWal"`); reintroducing a suffix reintroduces the "CarWal · CarWal" doubling on nil `page_title`. Per-page branding (`page_title` set to "Foo · CarWal" by each LiveView) is a Story 1.2+ concern when real routes land.
+
 ## Dev Notes
 
 ### Critical guardrails (read before coding)
@@ -174,8 +190,8 @@ Claude Fable 5 (claude-fable-5)
 - Toolchain installed via Homebrew: Elixir 1.20.2 / OTP 29 (satisfies "OTP 27+"); `.tool-versions` committed as documentation/pin.
 - Six bare context modules created with ownership `@moduledoc`s; no schemas/migrations (just-in-time per readiness report). `lib/carwal/accounts.ex` documents that Story 1.2's `phx.gen.auth` will overwrite it.
 - German `errors.po` translated (all default Ecto changeset messages, 2-form plural).
-- Local PG 18 runs as Docker container `carwal-pg` (postgres:18) on 5432. (Caveat: at review time 2026-07-06 port 5432 was held by another project's container, so `carwal-pg` could not bind — see Review Findings.)
-- `mix test` (5 tests) and `mix precommit` (warnings-as-errors, unused-deps, format, test) were green at implementation time. **Review 2026-07-06:** Chunk 1's Germanify patch broke `PageControllerTest` (asserted the removed English starter string); assertion updated to `=~ "CarWal"` (stable brand, re-review loosened from the transient "CarWal läuft" placeholder). `mix test` re-run is **pending** a dedicated PG-18 on 5432 (port conflict with `eaf-postgres`); `mix compile` + `mix format --check-formatted` pass. Do not mark this story `done` until `mix test` is genuinely green against PG-18.
+- Local PG 18 runs as Docker container `carwal-pg` (postgres:18) on host port **5433** (mapped to container 5432). Port 5432 is held by another project's `eaf-postgres` container on this host, so `carwal-pg` was rebound to 5433; `config/dev.exs` + `config/test.exs` set `port: 5433` (commented). Spine says "PostgreSQL 18.x, localhost" — port is a local-dev detail.
+- `mix test` (5 tests) and `mix precommit` (warnings-as-errors, unused-deps, format, test) were green at implementation time. **Review 2026-07-06:** Chunk 1's Germanify patch broke `PageControllerTest` (asserted the removed English starter string); assertion updated to `=~ "CarWal"` (stable brand). **Two-axis review 2026-07-06:** `carwal-pg` recreated on 5433; `mix ecto.reset` + `mix test` genuinely green — **5 passed**; `mix compile --warnings-as-errors`, `mix format --check-formatted`, `mix deps.unlock --check-unused` all clean. AC2 satisfied; story → `done`.
 - No new tests written: story introduces no logic beyond moduledoc-only modules and config; generated suite covers the skeleton (page controller + error views).
 
 ### File List
@@ -216,3 +232,4 @@ Generated unmodified by `mix phx.new` 1.8.8:
 - 2026-07-06: Story 1.1 implemented — Phoenix 1.8.8 skeleton generated (`CarWal` namespace), German default locale + Europe/Berlin timezone (tz 0.28.2 instead of tzdata, CVE avoidance), six AD-1 context roots, PG 18 dev container, tests + precommit green. Status → review.
 - 2026-07-06: Code review (chunks 1+2). Patches applied: `<html lang="de">`, `live_title` suffix → CarWal, home page Germanified, `priv/gettext/de/LC_MESSAGES/default.po` created + 5 strings translated, `mix.lock` staged, `page_controller_test` assertion updated to match German page. 21 items deferred to `deferred-work.md` (prod hardening → 1.3, mailer → 1.2, test/boilerplate cleanup). `mix compile` + `mix format` green; `mix test` re-run pending dedicated PG-18 (5432 port conflict). Status → in-progress (not done: mix test unverified + deferred medium items).
 - 2026-07-06: Patch re-review. 4 patch-quality fixes: dropped `live_title` suffix (was doubling "CarWal · CarWal" on nil page_title), reworded home copy ("Gerüst" → "startklar", user-facing), fixed heading hierarchy (hero is now `<h1>`, brand is eyebrow `<span>`), loosened test assertion to stable brand `=~ "CarWal"`. 2 deferred (.po Content-Type, script-block whitespace). `mix compile` + `mix format` green. Status → in-progress.
+- 2026-07-06: Two-axis review (Standards + Spec) against commit f0dc5b4. Patches: home strings routed through gettext (canonical English msgids + German in `de/default.po`; supersedes German-in-source), removed `<Layouts.flash_group>` from `home.html.heex` (AGENTS.md; root-layout-only page), `mix.exs` elixir `~> 1.15` → `~> 1.20`, added `tz` row to spine Stack table, **PG port 5432 → 5433** (recreated `carwal-pg` on 5433 to clear the `eaf-postgres` conflict) + `config/dev.exs`/`test.exs` `port: 5433`. 1 deferred (inline theme `<script>` — pre-paint FOUC avoidance trumps the no-inline rule; revisit if a sync-static theme mechanism is adopted). `mix ecto.reset` + `mix test` green (5 passed) + `mix compile`/`format`/`deps.unlock` clean. Status → done.
