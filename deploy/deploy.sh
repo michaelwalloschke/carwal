@@ -19,11 +19,8 @@ scp deploy/compose.yml "$CARWAL_HOST":~/carwal/compose.yml
 ssh "$CARWAL_HOST" "rm -rf ~/carwal/caddy"
 scp -r deploy/caddy "$CARWAL_HOST":~/carwal/
 
-echo "Starting database service..."
-ssh "$CARWAL_HOST" "cd ~/carwal && CARWAL_DOMAIN=$CARWAL_DOMAIN docker compose up -d db"
-
-echo "Waiting for database to be ready (timeout 60s)..."
-ssh "$CARWAL_HOST" 'cd ~/carwal && timeout=60 && elapsed=0 && until docker compose exec -T db pg_isready -U carwal -d carwal || [ $elapsed -ge $timeout ]; do sleep 1; elapsed=$((elapsed+1)); done && [ $elapsed -lt $timeout ]'
+echo "Starting database service and waiting for it to be healthy..."
+ssh "$CARWAL_HOST" "cd ~/carwal && CARWAL_DOMAIN=$CARWAL_DOMAIN docker compose up -d --wait db"
 
 echo "Running migrations..."
 ssh "$CARWAL_HOST" "cd ~/carwal && CARWAL_DOMAIN=$CARWAL_DOMAIN docker compose run --rm app bin/carwal eval 'CarWal.Release.migrate()'"
