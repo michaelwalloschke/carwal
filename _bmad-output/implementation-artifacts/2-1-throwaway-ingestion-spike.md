@@ -48,7 +48,7 @@ so that the riskiest unknowns are burned down before any production ingestion co
 
 - This is the one story in the whole roadmap explicitly allowed to be throwaway: no context module, no schema, no LiveView, no production wiring. Two `Mix.Tasks.*` files under `lib/mix/tasks/` is the full footprint. Resist the urge to build `Ingestion` context scaffolding here — that's Story 2.2/2.3's job.
 - **Real feeds only.** The story exists to burn down unknowns in the *actual* IServ/Schulmanager output — fixture ICS files or a fake mailbox would defeat the purpose. If the operator hasn't extracted the real feed handles yet (PRD Open Questions, epics.md Epic 2 prerequisite), this story is blocked — say so, don't fabricate test data.
-- **Config:** read feed URLs and mailbox credentials from `System.get_env/1` (e.g. `ISERV_ICAL_URL`, `SCHULMANAGER_ICAL_URL`, `SPIKE_IMAP_SERVER`, `SPIKE_IMAP_USER`, `SPIKE_IMAP_PASSWORD`) — consistent with the spine's runtime-config convention (`runtime.exs` env vars), even though this is throwaway. Do not commit real credentials.
+- **Config:** read feed URLs and mailbox credentials (`ISERV_ICAL_URL`, `SCHULMANAGER_ICAL_URL`, `SPIKE_IMAP_SERVER`, `SPIKE_IMAP_USER`, `SPIKE_IMAP_PASSWORD`) using the same empty-string-safe `read_env` pattern established in `config/runtime.exs:5-10` — a bare `System.get_env/1`/`System.fetch_env!/1` treats a set-but-empty var as present and crashes downstream (Epic 1 retro learning, hit 3× in Stories 1.1/1.3). `read_env` isn't a shared module, it's a local anonymous fn — copy the same 5-line pattern into the spike task and fail fast (`raise`) when a required var resolves to `nil`, mirroring the required-prod-env contract used for `SECRET_KEY_BASE`/VAPID keys. Do not commit real credentials.
 - Deps not yet in `mix.exs`: add `{:ical, "~> 2.0"}` and `{:yugo, "~> 1.0"}` (spine stack pins). `Req` is already a dep (`~> 0.5`) — use it for the HTTP fetch of the ICS feeds, no new HTTP client.
 
 ### ical (`~> 2.0`) API — confirmed against hexdocs.pm/GitHub (expothecary/ical)
@@ -65,12 +65,21 @@ occurrences = ICal.Recurrence.stream(rrule, event_or_component)
 ### yugo (`~> 1.0`) API — confirmed against codeberg.org/Flying-Toast/yugo
 
 ```elixir
+# read_env: same empty-string-safe helper as config/runtime.exs:5-10, copied
+# inline since it's a local anonymous fn, not a shared module.
+read_env = fn name ->
+  case String.trim(System.get_env(name, "")) do
+    "" -> raise "missing required env var: #{name}"
+    value -> value
+  end
+end
+
 # One-off client for the spike — do NOT add this to CarWal.Application's supervision tree
 {:ok, _pid} = Yugo.Client.start_link(
   name: :spike_client,
-  server: System.fetch_env!("SPIKE_IMAP_SERVER"),
-  username: System.fetch_env!("SPIKE_IMAP_USER"),
-  password: System.fetch_env!("SPIKE_IMAP_PASSWORD")
+  server: read_env.("SPIKE_IMAP_SERVER"),
+  username: read_env.("SPIKE_IMAP_USER"),
+  password: read_env.("SPIKE_IMAP_PASSWORD")
 )
 
 Yugo.subscribe(:spike_client, Yugo.Filter.all())

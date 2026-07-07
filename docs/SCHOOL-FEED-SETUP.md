@@ -108,4 +108,12 @@ Tell the operator once these are set — Story 2.1's Task 1 checks for them befo
 
 ## Sources
 
-Step-by-step paths and platform behavior confirmed against official documentation and cross-verified via three independent deep-research passes (2026-07-07) — see `_bmad-output/implementation-artifacts/2-1-deep-research-prompt.md` and the "Open Unknowns" / confirmed-facts section of `_bmad-output/implementation-artifacts/2-1-throwaway-ingestion-spike.md` for full source citations (schulmanager.zammad.com, doku.iserv.de, hilfe.iserv.de).
+Step-by-step paths and platform behavior confirmed against official documentation and cross-verified via three independent deep-research passes (2026-07-07):
+
+- Schulmanager Online Hilfe — [Kalender abonnieren](https://schulmanager.zammad.com/help/de-de/1-kalender/46-wie-kann-ich-die-schultermine-in-einem-anderen-kalender-abonnieren)
+- Schulmanager Online Hilfe — [Schnittstellen (iCal-Abo scope, module coverage)](https://schulmanager.zammad.com/help/de-de/3-verwaltung/29-schnittstellen)
+- IServ Dokumentation — [Kalendermodul (Link-Freigaben, Sichtbarkeitsstufen)](https://doku.iserv.de/modules/calendar/)
+- IServ Hilfe-Center — [Abwesenheitsnotiz und E-Mail-Weiterleitung](https://hilfe.iserv.de/abwesenheitsnotiz-e-mail-weiterleitung)
+- IServ Dokumentation — [E-Mail-Umleitung, Admin-Einschränkungen](https://doku.iserv.de/advanced/redirect/)
+
+Full source citations for every individual finding (including the ones behind the "confirmed facts" and "open unknowns" in Story 2.1) are in `_bmad-output/implementation-artifacts/2-1-deep-research-prompt.md` and the corresponding section of `_bmad-output/implementation-artifacts/2-1-throwaway-ingestion-spike.md`.
