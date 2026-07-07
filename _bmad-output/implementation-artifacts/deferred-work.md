@@ -80,3 +80,14 @@ Items deferred from code reviews and other workflows. Each entry: where it came 
 - `POSTGRES_PASSWORD`/`DATABASE_URL` password mismatch not detected at db healthcheck [`deploy/compose.yml:22`] — `pg_isready -U carwal` uses peer auth, passes regardless of password; mismatch surfaces at migrate (auth failed, loud). Optional: `PGPASSWORD=$POSTGRES_PASSWORD psql -U carwal -d carwal -c 'select 1'` healthcheck. Low.
 - Caddy LE rate-limit risk if DNS not pointed at the VPS on first deploy [`deploy/caddy/Caddyfile`] — `restart: unless-stopped` + ACME retries can hit the LE `new-order` limit (5/hour). README already lists DNS as a precondition; Caddy backs off. Low.
 - Caddyfile `{$CARWAL_DOMAIN}` empty on manual `docker compose up` if `~/carwal/.env` is deleted [`deploy/caddy/Caddyfile:1`] — Caddy crash-loops with an unhelpful parse error. `{$CARWAL_DOMAIN:localhost}` env-default or a compose `.env` guard; README says do not delete `~/carwal/.env`. Low.
+
+## Deferred from: code review of story 1.5 (2026-07-07)
+
+- source_spec: `_bmad-output/implementation-artifacts/1-5-backup-first-restore-rehearsal.md`
+- Rehearsal ran on a second docker-compose project on the same Mac, not a separate scratch box/VM as Subtask 3.1 specifies [`deploy/restore.sh`] — deferred, no resources (no second host available). Re-run via `SCRATCH_HOST=user@host` when a second host exists.
+- SSH hardening (`ConnectTimeout`/`ServerAliveInterval`) not added to `backup.sh`/`restore.sh` [`deploy/backup.sh`, `deploy/restore.sh`] — Dev Notes explicitly flagged this as optional/deferred; same pre-existing gap as story 1.3's `deploy.sh`. Low.
+- VPS `compose.yml` not yet redeployed with the new `media` bind mount [`deploy/compose.yml`] — Task 1.2's "day one" backup target isn't live on `carwal.cloud` yet; no data at risk (media still empty). Needs a normal follow-up `deploy.sh` run. Low.
+- `restore.sh`'s remote-host scratch mode (`SCRATCH_HOST=user@host`) is implemented but never exercised — only one VPS was available for the rehearsal, so only the local-scratch path is validated. Re-verify when a second host is available. Medium (untested DR path).
+- `com.carwal.backup.plist` log (`/tmp/carwal-backup.log`) has no permission hardening or rotation, and a failed launchd run produces no operator-visible notification [`deploy/com.carwal.backup.plist`] — silent backup failures could go unnoticed. Low.
+- `test-backup-scripts.sh` only checks syntax and the missing-env-file guard — no coverage of partial-env-var rejection or the actual restore/backup logic [`deploy/test-backup-scripts.sh`]. Low.
+- `restore.sh` gives no operator-friendly distinction between "repo not initialized," "wrong password," and "network unreachable" restic failures — just crashes via `set -euo pipefail` [`deploy/restore.sh:91`]. Low (DR-script UX polish, matters most under real incident stress).

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.carwal.backup</string>
+
+    <!--
+      Replace /path/to/carwal below with the absolute path to your local
+      clone before `launchctl load`ing this plist (see deploy/README.md).
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/path/to/carwal/deploy/backup.sh</string>
+    </array>
+
+    <!--
+      StartCalendarInterval, not cron: launchd re-evaluates missed calendar
+      intervals when the Mac wakes from sleep, so a backup skipped because the
+      lid was closed at 03:00 still runs shortly after wake. cron has no such
+      catch-up.
+    -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/carwal-backup.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/carwal-backup.log</string>
+</dict>
+</plist>
