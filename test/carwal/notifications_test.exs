@@ -16,7 +16,7 @@ defmodule CarWal.NotificationsTest do
     end
 
     test "register_subscription/3 inserts and upserts a subscription", %{scope: scope} do
-      endpoint = "https://example.com/push/1"
+      endpoint = "https://fcm.googleapis.com/push/1"
       keys = %{p256dh: "key1", auth: "auth1"}
 
       assert {:ok, %PushSubscription{} = sub} =
@@ -39,8 +39,8 @@ defmodule CarWal.NotificationsTest do
     end
 
     test "coexistence of different endpoints for the same user", %{scope: scope} do
-      endpoint1 = "https://example.com/push/1"
-      endpoint2 = "https://example.com/push/2"
+      endpoint1 = "https://fcm.googleapis.com/push/1"
+      endpoint2 = "https://fcm.googleapis.com/push/2"
       keys = %{p256dh: "key", auth: "auth"}
 
       assert {:ok, _} = Notifications.register_subscription(scope, endpoint1, keys)
@@ -56,7 +56,7 @@ defmodule CarWal.NotificationsTest do
       scope: scope,
       other_scope: other_scope
     } do
-      endpoint = "https://example.com/push/1"
+      endpoint = "https://fcm.googleapis.com/push/1"
       keys = %{p256dh: "key", auth: "auth"}
 
       assert {:ok, _} = Notifications.register_subscription(scope, endpoint, keys)
@@ -77,7 +77,7 @@ defmodule CarWal.NotificationsTest do
       scope: scope,
       other_scope: other_scope
     } do
-      endpoint = "https://example.com/push/1"
+      endpoint = "https://fcm.googleapis.com/push/1"
       keys = %{p256dh: "key", auth: "auth"}
 
       assert {:ok, sub} = Notifications.register_subscription(scope, endpoint, keys)
@@ -87,13 +87,41 @@ defmodule CarWal.NotificationsTest do
       assert Repo.get(PushSubscription, sub.id)
 
       # Can unsubscribe using owner's scope
-      assert {:ok, %PushSubscription{}} = Notifications.unsubscribe(scope, endpoint)
+      assert {:ok, :deleted} = Notifications.unsubscribe(scope, endpoint)
       refute Repo.get(PushSubscription, sub.id)
     end
 
+    test "unsubscribe/2 is idempotent: a second call on the same endpoint is not_found", %{
+      scope: scope
+    } do
+      endpoint = "https://fcm.googleapis.com/push/1"
+      keys = %{p256dh: "key", auth: "auth"}
+
+      assert {:ok, _sub} = Notifications.register_subscription(scope, endpoint, keys)
+
+      assert {:ok, :deleted} = Notifications.unsubscribe(scope, endpoint)
+      assert {:error, :not_found} = Notifications.unsubscribe(scope, endpoint)
+    end
+
+    test "register_subscription/3 rejects endpoints outside the known push service allowlist", %{
+      scope: scope
+    } do
+      keys = %{p256dh: "key", auth: "auth"}
+
+      assert {:error, changeset} =
+               Notifications.register_subscription(scope, "https://evil.example/push", keys)
+
+      assert %{endpoint: ["must be a known push service URL"]} = errors_on(changeset)
+
+      assert {:error, changeset} =
+               Notifications.register_subscription(scope, "http://fcm.googleapis.com/push", keys)
+
+      assert %{endpoint: ["must be a valid https URL"]} = errors_on(changeset)
+    end
+
     test "send_test_push deletes expired subscriptions on :subscription_expired", %{scope: scope} do
-      endpoint_expired = "https://example.com/expired"
-      endpoint_active = "https://example.com/active"
+      endpoint_expired = "https://fcm.googleapis.com/expired"
+      endpoint_active = "https://fcm.googleapis.com/active"
       keys = %{p256dh: "key", auth: "auth"}
 
       assert {:ok, sub_expired} =
@@ -121,7 +149,7 @@ defmodule CarWal.NotificationsTest do
     end
 
     test "send_test_push_to deletes single expired subscription", %{scope: scope} do
-      endpoint = "https://example.com/expired"
+      endpoint = "https://fcm.googleapis.com/expired"
       keys = %{p256dh: "key", auth: "auth"}
 
       assert {:ok, sub} = Notifications.register_subscription(scope, endpoint, keys)

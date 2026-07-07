@@ -51,23 +51,23 @@ defmodule CarWal.Notifications do
   """
   def unsubscribe(current_scope, endpoint) do
     user = current_scope.user
-
-    case Repo.get_by(PushSubscription, user_id: user.id, endpoint: endpoint) do
-      nil -> {:error, :not_found}
-      sub -> Repo.delete(sub)
-    end
+    delete_by(user_id: user.id, endpoint: endpoint)
   end
 
   @doc """
   Sends a test push notification to all subscriptions of the user in the given current_scope.
   """
-  def send_test_push(current_scope, send_fun \\ default_web_push_client()) do
+  def send_test_push(current_scope), do: send_test_push(current_scope, web_push_client())
+
+  @doc false
+  # Internal seam for tests to inject a fake send function. Do not call this
+  # from production code — always go through send_test_push/1 (AD-7: this
+  # context is the sole caller of ExNudge).
+  def send_test_push(current_scope, send_fun) do
     results =
       current_scope
       |> list_subscriptions_for_user()
-      |> Enum.map(fn sub ->
-        send_to_subscription(sub, "Test-Benachrichtigung von CarWal", send_fun)
-      end)
+      |> Enum.map(&send_to_subscription(&1, "Test-Benachrichtigung von CarWal", send_fun))
 
     {:ok, results}
   end
@@ -75,7 +75,11 @@ defmodule CarWal.Notifications do
   @doc """
   Sends a test push notification to a specific subscription of the user in the given current_scope.
   """
-  def send_test_push_to(current_scope, endpoint, send_fun \\ default_web_push_client()) do
+  def send_test_push_to(current_scope, endpoint),
+    do: send_test_push_to(current_scope, endpoint, web_push_client())
+
+  @doc false
+  def send_test_push_to(current_scope, endpoint, send_fun) do
     user = current_scope.user
 
     case Repo.get_by(PushSubscription, user_id: user.id, endpoint: endpoint) do
@@ -102,8 +106,7 @@ defmodule CarWal.Notifications do
         ok
 
       {:error, :subscription_expired} = err ->
-        # Delete stale subscription
-        Repo.delete!(sub)
+        delete_by(id: sub.id)
         err
 
       {:error, reason} = err ->
@@ -112,7 +115,19 @@ defmodule CarWal.Notifications do
     end
   end
 
-  defp default_web_push_client do
+  # A single atomic DELETE by filter, immune to the fetch-then-delete race a
+  # `Repo.get_by` + `Repo.delete` pair has (double-click, second tab/device,
+  # or a concurrent :subscription_expired cleanup on the same row).
+  defp delete_by(filters) do
+    query = from(ps in PushSubscription, where: ^filters)
+
+    case Repo.delete_all(query) do
+      {0, _} -> {:error, :not_found}
+      {_count, _} -> {:ok, :deleted}
+    end
+  end
+
+  defp web_push_client do
     Application.get_env(:carwal, :web_push_client, &ExNudge.send_notification/2)
   end
 end

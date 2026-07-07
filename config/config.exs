@@ -100,7 +100,9 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
-# Web Push configuration using ex_nudge
+# Web Push configuration using ex_nudge.
+# Dev/test-only VAPID keypair, not a secret — same convention as the
+# dev/test `secret_key_base` below. Prod keys come from env vars (runtime.exs).
 config :ex_nudge,
   vapid_subject: "mailto:operator@carwal.local",
   vapid_public_key:

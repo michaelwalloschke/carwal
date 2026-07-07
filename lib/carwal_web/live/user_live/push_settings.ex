@@ -15,8 +15,14 @@ defmodule CarWalWeb.UserLive.PushSettings do
           </.header>
         </div>
 
-        <div id="push-setup" phx-hook="Push" data-vapid-key={@vapid_public_key} class="space-y-6">
-          <div class="bg-base-200 rounded-xl p-6 border border-base-300 shadow-sm">
+        <div class="space-y-6">
+          <div
+            id="push-setup"
+            phx-hook="Push"
+            phx-update="ignore"
+            data-vapid-key={@vapid_public_key}
+            class="bg-base-200 rounded-xl p-6 border border-base-300 shadow-sm"
+          >
             <h2 class="text-lg font-semibold mb-2">{gettext("Aktuelles Gerät registrieren")}</h2>
             <p class="text-sm opacity-75 mb-4">
               {gettext(
@@ -119,16 +125,12 @@ defmodule CarWalWeb.UserLive.PushSettings do
         {:noreply, put_flash(socket, :info, gettext("Test-Push wurde an das Gerät gesendet."))}
 
       {:error, :subscription_expired} ->
-        # Refresh subscriptions list since the stale sub was deleted
-        subscriptions = Notifications.list_subscriptions_for_user(current_scope)
-
-        socket
-        |> put_flash(
-          :error,
-          gettext("Die Registrierung dieses Geräts ist abgelaufen und wurde gelöscht.")
-        )
-        |> assign(:subscriptions, subscriptions)
-        |> then(&{:noreply, &1})
+        {:noreply,
+         refresh_subscriptions(
+           socket,
+           :error,
+           gettext("Die Registrierung dieses Geräts ist abgelaufen und wurde gelöscht.")
+         )}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("Fehler beim Senden des Test-Pushs."))}
@@ -136,29 +138,16 @@ defmodule CarWalWeb.UserLive.PushSettings do
   end
 
   def handle_event("send_test_push_all", _params, socket) do
-    current_scope = socket.assigns.current_scope
-
-    {:ok, _results} = Notifications.send_test_push(current_scope)
-    # Refresh in case any subscription expired and got deleted
-    subscriptions = Notifications.list_subscriptions_for_user(current_scope)
+    {:ok, _results} = Notifications.send_test_push(socket.assigns.current_scope)
 
     {:noreply,
-     socket
-     |> put_flash(:info, gettext("Test-Push wurde an alle Geräte gesendet."))
-     |> assign(:subscriptions, subscriptions)}
+     refresh_subscriptions(socket, :info, gettext("Test-Push wurde an alle Geräte gesendet."))}
   end
 
   def handle_event("unsubscribe", %{"endpoint" => endpoint}, socket) do
-    current_scope = socket.assigns.current_scope
-
-    case Notifications.unsubscribe(current_scope, endpoint) do
+    case Notifications.unsubscribe(socket.assigns.current_scope, endpoint) do
       {:ok, _} ->
-        subscriptions = Notifications.list_subscriptions_for_user(current_scope)
-
-        socket
-        |> put_flash(:info, gettext("Gerät erfolgreich abbestellt."))
-        |> assign(:subscriptions, subscriptions)
-        |> then(&{:noreply, &1})
+        {:noreply, refresh_subscriptions(socket, :info, gettext("Gerät erfolgreich abbestellt."))}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("Fehler beim Abbestellen."))}
@@ -166,23 +155,33 @@ defmodule CarWalWeb.UserLive.PushSettings do
   end
 
   def handle_event("push_subscribed", _params, socket) do
-    current_scope = socket.assigns.current_scope
-    subscriptions = Notifications.list_subscriptions_for_user(current_scope)
-
-    socket
-    |> put_flash(:info, gettext("Gerät erfolgreich für Push-Benachrichtigungen registriert."))
-    |> assign(:subscriptions, subscriptions)
-    |> then(&{:noreply, &1})
+    {:noreply,
+     refresh_subscriptions(
+       socket,
+       :info,
+       gettext("Gerät erfolgreich für Push-Benachrichtigungen registriert.")
+     )}
   end
 
-  def handle_event("push_unsubscribed", _params, socket) do
-    current_scope = socket.assigns.current_scope
-    subscriptions = Notifications.list_subscriptions_for_user(current_scope)
+  def handle_event("push_permission_denied", _params, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       gettext("Benachrichtigungen wurden im Browser abgelehnt.")
+     )}
+  end
+
+  def handle_event("push_subscribe_failed", _params, socket) do
+    {:noreply, put_flash(socket, :error, gettext("Gerät konnte nicht registriert werden."))}
+  end
+
+  defp refresh_subscriptions(socket, flash_kind, flash_message) do
+    subscriptions = Notifications.list_subscriptions_for_user(socket.assigns.current_scope)
 
     socket
-    |> put_flash(:info, gettext("Gerät abbestellt."))
+    |> put_flash(flash_kind, flash_message)
     |> assign(:subscriptions, subscriptions)
-    |> then(&{:noreply, &1})
   end
 
   defp truncate_endpoint(nil), do: ""

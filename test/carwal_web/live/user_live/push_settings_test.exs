@@ -11,7 +11,7 @@ defmodule CarWalWeb.UserLive.PushSettingsTest do
       {:ok, sub} =
         Notifications.register_subscription(
           scope,
-          "https://example.com/push/123",
+          "https://fcm.googleapis.com/push/123",
           %{p256dh: "key", auth: "auth"}
         )
 
@@ -23,14 +23,14 @@ defmodule CarWalWeb.UserLive.PushSettingsTest do
       assert has_element?(view, "#enable-push-btn")
       assert has_element?(view, "#test-push-#{sub.id}")
       assert has_element?(view, "#delete-push-#{sub.id}")
-      assert html =~ "example.com"
+      assert html =~ "fcm.googleapis.com"
     end
 
     test "handles unsubscribe event", %{conn: conn, scope: scope} do
       {:ok, sub} =
         Notifications.register_subscription(
           scope,
-          "https://example.com/push/123",
+          "https://fcm.googleapis.com/push/123",
           %{p256dh: "key", auth: "auth"}
         )
 
@@ -52,7 +52,7 @@ defmodule CarWalWeb.UserLive.PushSettingsTest do
       {:ok, _sub} =
         Notifications.register_subscription(
           scope,
-          "https://example.com/push/123",
+          "https://fcm.googleapis.com/push/123",
           %{p256dh: "key", auth: "auth"}
         )
 
@@ -64,6 +64,24 @@ defmodule CarWalWeb.UserLive.PushSettingsTest do
         |> render_click()
 
       assert html =~ "Test-Push wurde an alle Geräte gesendet."
+    end
+
+    test "handles send_test_push event for a single device", %{conn: conn, scope: scope} do
+      {:ok, sub} =
+        Notifications.register_subscription(
+          scope,
+          "https://fcm.googleapis.com/push/123",
+          %{p256dh: "key", auth: "auth"}
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/users/push")
+
+      html =
+        view
+        |> element("#test-push-#{sub.id}")
+        |> render_click()
+
+      assert html =~ "Test-Push wurde an das Gerät gesendet."
     end
   end
 end

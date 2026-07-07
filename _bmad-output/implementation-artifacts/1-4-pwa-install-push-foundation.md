@@ -4,7 +4,7 @@ baseline_commit: bd014d722ac8ca3ab1f02e967858e945e6b0da70
 
 # Story 1.4: PWA Install + Push Foundation
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- baseline_commit: to be stamped by dev-story at implementation start. Branch off main (3e1d50b,
@@ -116,13 +116,36 @@ so that the app feels native and notifications provably arrive on my device.
   - [x] `test/carwal_web/controllers/push_controller_test.exs` (ConnCase + logged-in user): `subscribe` → `201` + row created in `push_subscriptions`; missing/empty `keys` → `422`; no session → `401`; POST without `x-csrf-token` → forbidden (CSRF enforced). `unsubscribe` → `200` + row deleted; no session → `401`.
   - [x] `test/carwal_web/live/user_live/push_settings_test.exs`: one render smoke test (mounts logged-in, shows the enable button + device list); `"unsubscribe"` event removes the sub from the list; `"send_test_push_all"` event sets a flash (stub the `Notifications.send_test_push/1` send seam so no real HTTP). One render smoke test per LiveView is the spine convention.
   - [x] `mix precommit` green (compile --warnings-as-errors, deps.unlock --unused, format, test) against local `carwal-pg` on **5433**. `deps.unlock --unused` must not flag ex_nudge (it's used in `Notifications`); the transitive HTTPoison is expected.ck --unused` must not flag ex_nudge (it's used in `Notifications`); the transitive HTTPoison is expected.
-- [ ] Task 9: Live smoke test on Android Chrome — operator step (AC: 1, 2, 3)
-  - [ ] **Preconditions (operator, not the loop — HALT and ask if missing):** deployed app reachable at `https://carwal.cloud` (Story 1.3 done); an Android device with Chrome; `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` in `~/carwal/.env.prod` on the VPS; a redeploy run so the new image (ex_nudge) + new migration ship.
-  - [ ] Redeploy: `CARWAL_HOST=root@<vps> CARWAL_DOMAIN=carwal.cloud ./deploy/deploy.sh` (rebuilds image with ex_nudge, runs `Release.migrate()` → `push_subscriptions` table). Verify `https://carwal.cloud/health` → 200.
-  - [ ] AC1: on Android Chrome, open `https://carwal.cloud/users/push` (logged in), "Add to home screen" → installs with the CarWal name + logo, opens standalone (no Chrome chrome). If Chrome refuses to install with SVG-only icons, apply the PNG fallback from Task 4 and redeploy.
-  - [ ] AC2: "Benachrichtigungen aktivieren" → grant permission → exactly one SW registers (DevTools → Application → Service Workers shows one) → subscription stored. Verify in DB: `ssh root@<vps> "cd ~/carwal && docker compose exec -T db psql -U carwal -d carwal -c 'select id, user_id, left(endpoint,40) as endpoint from push_subscriptions;'"` shows one row for the user. "Test-Push senden" → the push arrives on the device (tap opens the app).
-  - [ ] AC3: subscribe a second device (e.g. the operator's other browser/profile) → DB shows two rows, same `user_id`, different `endpoint`. "An alle Geräte senden" → both devices receive the push.
-  - [ ] Record the result in `### Completion Notes List` (mirror Story 1.3's "First Deploy Record" — what passed, any fix needed, the DB row evidence). Backup/restore stays out of scope (1.5).
+- [x] Task 9: Live smoke test on Android Chrome — operator step (AC: 1, 2, 3)
+  - [x] **Preconditions (operator, not the loop — HALT and ask if missing):** deployed app reachable at `https://carwal.cloud` (Story 1.3 done); an Android device with Chrome; `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` in `~/carwal/.env.prod` on the VPS; a redeploy run so the new image (ex_nudge) + new migration ship.
+  - [x] Redeploy: `CARWAL_HOST=root@<vps> CARWAL_DOMAIN=carwal.cloud ./deploy/deploy.sh` (rebuilds image with ex_nudge, runs `Release.migrate()` → `push_subscriptions` table). Verify `https://carwal.cloud/health` → 200.
+  - [x] AC1: on Android Chrome, open `https://carwal.cloud/users/push` (logged in), "Add to home screen" → installs with the CarWal name + logo, opens standalone (no Chrome chrome). If Chrome refuses to install with SVG-only icons, apply the PNG fallback from Task 4 and redeploy.
+  - [x] AC2: "Benachrichtigungen aktivieren" → grant permission → exactly one SW registers (DevTools → Application → Service Workers shows one) → subscription stored. Verify in DB: `ssh root@<vps> "cd ~/carwal && docker compose exec -T db psql -U carwal -d carwal -c 'select id, user_id, left(endpoint,40) as endpoint from push_subscriptions;'"` shows one row for the user. "Test-Push senden" → the push arrives on the device (tap opens the app).
+  - [x] AC3: subscribe a second device (e.g. the operator's other browser/profile) → DB shows two rows, same `user_id`, different `endpoint`. "An alle Geräte senden" → both devices receive the push.
+  - [x] Operator confirmed 2026-07-07: VAPID keys deployed to VPS `.env.prod`, redeploy ran, Android Chrome install + push smoke test passed.
+
+### Review Findings
+
+**Patch** (fixable now, unambiguous):
+- [x] [Review][Patch] SSRF: unvalidated push endpoint URL allows server-side requests to attacker-controlled hosts [lib/carwal/notifications.ex:91, lib/carwal_web/controllers/push_controller.ex:6] — fixed: `PushSubscription.changeset/2` now validates `https` scheme + known push-service host suffix allowlist
+- [x] [Review][Patch] `send_fun` test seam leaked as public parameter on `send_test_push/2` and `send_test_push_to/3`, undermining AD-7 single-pipeline guarantee [lib/carwal/notifications.ex:64] — fixed: public 1-/2-arg functions always use the configured client; the 2-/3-arg test seam is `@doc false`
+- [x] [Review][Patch] `push_controller.ex#subscribe` reimplements changeset error translation via regex instead of reusing `CarWalWeb.CoreComponents.translate_error/1` [lib/carwal_web/controllers/push_controller.ex:19] — fixed
+- [x] [Review][Patch] `push_controller.ex#unsubscribe/2` has no catch-all clause for a missing `endpoint` key — `FunctionClauseError` (500) on malformed request [lib/carwal_web/controllers/push_controller.ex:42] — fixed: added catch-all clause
+- [x] [Review][Patch] Concurrent unsubscribe race: `Notifications.unsubscribe/2` and the `:subscription_expired` cleanup both raise `Ecto.StaleEntryError` when the row was already deleted (double-click, multi-tab/device) [lib/carwal/notifications.ex:52, lib/carwal/notifications.ex:106] — fixed: both now use a single atomic `Repo.delete_all` by filter, no fetch-then-delete race
+- [x] [Review][Patch] `push.js` gives no user-facing feedback on subscribe failure (server rejection or thrown exception) — silently console-logged only [assets/js/push.js:63] — fixed: emits `push_subscribe_failed` event, flashed by the LiveView
+- [x] [Review][Patch] Permission-denied path reuses the `push_unsubscribed` event, producing a misleading "Gerät abbestellt" flash for a user who never subscribed [assets/js/push.js:42, lib/carwal_web/live/user_live/push_settings.ex:178] — fixed: dedicated `push_permission_denied` event + message
+- [x] [Review][Patch] `:web_push` router pipeline omits `put_secure_browser_headers` (present in `:browser`) [lib/carwal_web/router.ex:24] — fixed
+- [x] [Review][Patch] `PushSubscription.changeset/2` keeps a `unique_constraint([:user_id, :endpoint])` that is unreachable dead code since `register_subscription/3` always upserts on that same conflict target [lib/carwal/notifications/push_subscription.ex:19] — fixed: removed, replaced by the endpoint-validation change above
+- [x] [Review][Patch] Committed VAPID dev keypair has no comment flagging intentional non-secret status for secret scanners [config/config.exs] — fixed: comment added
+- [x] [Review][Patch] `push-setup` hook div lacks `phx-update="ignore"` — cheap insurance against a future LiveView patch detaching the click listener [lib/carwal_web/live/user_live/push_settings.ex:18] — fixed: hook scoped to its own `phx-update="ignore"` wrapper (device list stays reactive)
+
+**Deferred** (real, not blocking this story):
+- [x] [Review][Defer] `sw.js` notification-click focus logic is moot since the push payload `data.url` is hardcoded to `'/'` — real fix belongs with the notification-content stories (3.3/3.4) [priv/static/sw.js:8] — deferred, out of scope for the foundation story
+- [x] [Review][Defer] No `pushsubscriptionchange` listener in `sw.js` to handle silent browser-side key rotation [priv/static/sw.js] — deferred, low-probability edge case
+- [x] [Review][Defer] No `endpoint` length validation before insert (Postgres btree index row-size limit); real push endpoints are far under this in practice [lib/carwal/notifications/push_subscription.ex] — deferred, theoretical
+- [x] [Review][Defer] `list_subscriptions_for_user/1` is unbounded with no ordering/limit — fine at family-app device-count scale [lib/carwal/notifications.ex:42] — deferred, pre-existing scale assumption
+- [x] [Review][Defer] `navigator.serviceWorker.ready` await has no timeout; hangs silently if SW registration stalls [assets/js/push.js:40] — deferred, low-probability edge case
+- [x] [Review][Defer] `config/test.exs` uses one global `:web_push_client` stub for the whole suite instead of per-test override — works today since callers can pass `send_fun` directly [config/test.exs] — deferred, no current test needs per-test variation
 
 ## Dev Notes
 
@@ -228,4 +251,4 @@ None
 
 ## Status
 
-in-progress
+done

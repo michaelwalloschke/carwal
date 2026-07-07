@@ -12,7 +12,7 @@ defmodule CarWalWeb.PushControllerTest do
       csrf_token = Plug.CSRFProtection.get_csrf_token()
 
       params = %{
-        "endpoint" => "https://example.com/push/123",
+        "endpoint" => "https://fcm.googleapis.com/push/123",
         "keys" => %{
           "p256dh" => "my_p256dh_key",
           "auth" => "my_auth_key"
@@ -28,7 +28,7 @@ defmodule CarWalWeb.PushControllerTest do
 
       # Verify it is in database
       [sub] = Notifications.list_subscriptions_for_user(scope)
-      assert sub.endpoint == "https://example.com/push/123"
+      assert sub.endpoint == "https://fcm.googleapis.com/push/123"
       assert sub.p256dh == "my_p256dh_key"
       assert sub.auth == "my_auth_key"
     end
@@ -41,7 +41,7 @@ defmodule CarWalWeb.PushControllerTest do
       conn_missing_keys =
         recycle(conn)
         |> put_req_header("x-csrf-token", csrf_token)
-        |> post(~p"/push/subscribe", %{"endpoint" => "https://example.com/push/123"})
+        |> post(~p"/push/subscribe", %{"endpoint" => "https://fcm.googleapis.com/push/123"})
 
       assert json_response(conn_missing_keys, 422) == %{"error" => "missing_required_fields"}
     end
@@ -53,7 +53,7 @@ defmodule CarWalWeb.PushControllerTest do
       csrf_token = Plug.CSRFProtection.get_csrf_token()
 
       params = %{
-        "endpoint" => "https://example.com/push/123",
+        "endpoint" => "https://fcm.googleapis.com/push/123",
         "keys" => %{
           "p256dh" => "my_p256dh_key",
           "auth" => "my_auth_key"
@@ -70,7 +70,7 @@ defmodule CarWalWeb.PushControllerTest do
 
     test "returns forbidden / throws CSRF error when CSRF token is missing", %{conn: conn} do
       params = %{
-        "endpoint" => "https://example.com/push/123",
+        "endpoint" => "https://fcm.googleapis.com/push/123",
         "keys" => %{
           "p256dh" => "my_p256dh_key",
           "auth" => "my_auth_key"
@@ -97,7 +97,7 @@ defmodule CarWalWeb.PushControllerTest do
       {:ok, sub} =
         Notifications.register_subscription(
           scope,
-          "https://example.com/push/123",
+          "https://fcm.googleapis.com/push/123",
           %{p256dh: "key", auth: "auth"}
         )
 
@@ -124,7 +124,7 @@ defmodule CarWalWeb.PushControllerTest do
       conn =
         recycle(conn)
         |> put_req_header("x-csrf-token", csrf_token)
-        |> post(~p"/push/unsubscribe", %{"endpoint" => "https://example.com/nonexistent"})
+        |> post(~p"/push/unsubscribe", %{"endpoint" => "https://fcm.googleapis.com/nonexistent"})
 
       assert json_response(conn, 404) == %{"error" => "subscription_not_found"}
     end

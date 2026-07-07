@@ -40,7 +40,7 @@ export default {
             const reg = await navigator.serviceWorker.ready;
             const perm = await Notification.requestPermission();
             if (perm !== 'granted') {
-              this.pushEvent('push_unsubscribed', {});
+              this.pushEvent('push_permission_denied', {});
               return;
             }
 
@@ -64,9 +64,11 @@ export default {
               this.pushEvent('push_subscribed', {});
             } else {
               console.error('Failed to subscribe on server:', response.statusText);
+              this.pushEvent('push_subscribe_failed', {});
             }
           } catch (e) {
             console.error('Error subscribing to push notifications:', e);
+            this.pushEvent('push_subscribe_failed', {});
           }
         });
       }

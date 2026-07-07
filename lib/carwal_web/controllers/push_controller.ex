@@ -17,11 +17,10 @@ defmodule CarWalWeb.PushController do
 
           {:error, changeset} ->
             errors =
-              Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-                Regex.replace(~r"%{(\w+)}", msg, fn _, key ->
-                  to_string(opts[String.to_existing_atom(key)])
-                end)
-              end)
+              Ecto.Changeset.traverse_errors(
+                changeset,
+                &CarWalWeb.CoreComponents.translate_error/1
+              )
 
             conn
             |> put_status(:unprocessable_entity)
@@ -57,6 +56,12 @@ defmodule CarWalWeb.PushController do
       _ ->
         unauthorized(conn)
     end
+  end
+
+  def unsubscribe(conn, _params) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{error: "missing_required_fields"})
   end
 
   defp unauthorized(conn) do
