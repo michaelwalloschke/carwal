@@ -1,3 +1,10 @@
+# Cap container logs so a crash loop or verbose logger cannot fill the VPS disk.
+x-logging: &default_logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   app:
     image: carwal:latest
@@ -7,6 +14,7 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default_logging
 
   db:
     image: postgres:18
@@ -25,6 +33,7 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+    logging: *default_logging
 
   caddy:
     image: caddy:2.9-alpine

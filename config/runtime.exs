@@ -27,8 +27,8 @@ if config_env() != :test do
 
   port =
     case Integer.parse(port_raw) do
-      {p, ""} -> p
-      _ -> raise "PORT must be an integer, got: #{inspect(port_raw)}"
+      {p, ""} when p >= 1 and p <= 65535 -> p
+      _ -> raise "PORT must be an integer in 1..65535, got: #{inspect(port_raw)}"
     end
 
   config :carwal, CarWalWeb.Endpoint, http: [port: port]
@@ -49,8 +49,8 @@ if config_env() == :prod do
 
   pool_size =
     case Integer.parse(pool_size_raw) do
-      {size, ""} -> size
-      _ -> raise "POOL_SIZE must be an integer, got: #{inspect(pool_size_raw)}"
+      {size, ""} when size >= 1 -> size
+      _ -> raise "POOL_SIZE must be a positive integer, got: #{inspect(pool_size_raw)}"
     end
 
   config :carwal, CarWal.Repo,
@@ -107,8 +107,8 @@ if config_env() == :prod do
 
     smtp_port =
       case Integer.parse(smtp_port_raw) do
-        {port, ""} -> port
-        _ -> raise "SMTP_PORT must be an integer, got: #{inspect(smtp_port_raw)}"
+        {port, ""} when port >= 1 and port <= 65535 -> port
+        _ -> raise "SMTP_PORT must be an integer in 1..65535, got: #{inspect(smtp_port_raw)}"
       end
 
     smtp_host = read_env.("SMTP_HOST", "smtp.mailbox.org")
@@ -129,7 +129,11 @@ if config_env() == :prod do
         depth: 3
       ],
       retries: 2,
-      no_mx_lookups: false
+      # Submission relay (posteo.de:587 with auth + STARTTLS), not MTA-to-MTA
+      # delivery. no_mx_lookups: true connects directly to the relay host; false
+      # would MX-resolve it (e.g. posteo.de -> mx04.posteo.de inbound MX) and
+      # time out, since submission is not accepted on the MX hosts.
+      no_mx_lookups: true
 
     # mailbox.org/Posteo reject senders not owned by the account.
     config :carwal, :mail_from, {"CarWal", read_env.("MAIL_FROM", smtp_user)}

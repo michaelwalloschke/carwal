@@ -16,9 +16,14 @@ defmodule CarWal.Release do
   def seed do
     load_app()
 
-    Ecto.Migrator.with_repo(CarWal.Repo, fn _ ->
-      Code.eval_file(Path.join([:code.priv_dir(:carwal), "repo", "seeds.exs"]))
-    end)
+    # Pattern-match the with_repo tuple (like migrate/rollback) so a repo-start
+    # failure or a raise inside seeds.exs fails the eval non-zero instead of
+    # returning {:error, _} and exiting 0 (operator would believe the family
+    # was seeded when it was not).
+    {:ok, _, _} =
+      Ecto.Migrator.with_repo(CarWal.Repo, fn _ ->
+        Code.eval_file(Path.join([:code.priv_dir(:carwal), "repo", "seeds.exs"]))
+      end)
   end
 
   def rollback(repo, version) do
