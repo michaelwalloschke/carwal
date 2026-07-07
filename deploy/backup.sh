@@ -36,6 +36,9 @@ export RESTIC_REPOSITORY RESTIC_PASSWORD
 STAGING_DIR="${CARWAL_BACKUP_STAGING:-$HOME/.carwal-backup-staging}"
 mkdir -p "$STAGING_DIR/backups" "$STAGING_DIR/media"
 
+echo "Ensuring ~/carwal/backups and ~/carwal/media exist on $CARWAL_HOST..."
+ssh "$CARWAL_HOST" "mkdir -p ~/carwal/backups ~/carwal/media"
+
 echo "Shipping backup-remote.sh to $CARWAL_HOST..."
 scp "$(dirname "$0")/backup-remote.sh" "$CARWAL_HOST":~/carwal/backup-remote.sh
 ssh "$CARWAL_HOST" "chmod +x ~/carwal/backup-remote.sh"
@@ -44,8 +47,8 @@ echo "Triggering remote dump on $CARWAL_HOST..."
 ssh "$CARWAL_HOST" "cd ~/carwal && ./backup-remote.sh"
 
 echo "Pulling dumps and media from $CARWAL_HOST into $STAGING_DIR..."
-rsync -az -e ssh "$CARWAL_HOST":~/carwal/backups/ "$STAGING_DIR/backups/"
-rsync -az -e ssh "$CARWAL_HOST":~/carwal/media/ "$STAGING_DIR/media/"
+rsync -az --delete -e ssh "$CARWAL_HOST":~/carwal/backups/ "$STAGING_DIR/backups/"
+rsync -az --delete -e ssh "$CARWAL_HOST":~/carwal/media/ "$STAGING_DIR/media/"
 
 echo "Running restic backup..."
 restic backup "$STAGING_DIR" --tag carwal

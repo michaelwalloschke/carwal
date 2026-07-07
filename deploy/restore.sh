@@ -45,9 +45,9 @@ export RESTIC_REPOSITORY RESTIC_PASSWORD
 
 remote_run() {
   if [ -n "$SCRATCH_HOST" ]; then
-    ssh "$SCRATCH_HOST" "cd ~/carwal && $1"
+    ssh "$SCRATCH_HOST" "set -euo pipefail; cd ~/carwal && $1"
   else
-    bash -c "cd \"$SCRATCH_DIR\" && $1"
+    bash -c "set -euo pipefail; cd \"$SCRATCH_DIR\" && $1"
   fi
 }
 
@@ -96,6 +96,9 @@ if [ -z "$DUMP_FILE" ]; then
   exit 1
 fi
 MEDIA_DIR=$(find "$RESTORE_STAGING" -type d -name media | head -n1)
+if [ -z "$MEDIA_DIR" ]; then
+  echo "Warning: no media directory found in restored snapshot — skipping media restore."
+fi
 
 # Resolve repo root so relative copy_file/copy_dir source paths work from any CWD.
 cd "$(dirname "$0")/.."
@@ -119,7 +122,7 @@ if [ -z "$SCRATCH_HOST" ]; then
 fi
 
 echo "Starting database service and waiting for it to be healthy..."
-remote_run "$COMPOSE up -d --wait --wait-timeout 60 db"
+remote_run "$COMPOSE up -d --wait --wait-timeout 120 db"
 
 echo "Restoring the Postgres dump..."
 remote_run "gunzip -c restore-dump.sql.gz | $COMPOSE exec -T db psql -U carwal carwal"

@@ -13,6 +13,7 @@ TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 DUMP_FILE="$BACKUP_DIR/carwal-$TIMESTAMP.sql.gz"
 
 mkdir -p "$BACKUP_DIR"
+trap 'rm -f "$DUMP_FILE"' ERR
 
 echo "Dumping carwal database to $DUMP_FILE..."
 cd ~/carwal

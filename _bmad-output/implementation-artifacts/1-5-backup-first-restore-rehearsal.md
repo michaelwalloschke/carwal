@@ -4,7 +4,7 @@ baseline_commit: 6589bd526bc4bbaea1e12d21622a2a9e6d1a29ef
 
 # Story 1.5: Backup + First Restore Rehearsal
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -29,7 +29,7 @@ so that family data (especially media) survives the loss of the box.
   - [x] Subtask 2.2: `deploy/backup.sh` (runs on the Mac): SSH to VPS to trigger `backup-remote.sh` (dump + prune), then `restic backup` over SSH (`sftp:` or `rest:` backend, whichever the operator's restic repo uses) pulling `~/carwal/backups/` (dumps) and `~/carwal/media/` from the VPS into the restic repo on the FileVault'd volume. Pull-based: initiated from the Mac, not the VPS, per spine.
   - [x] Subtask 2.3: `restic init` (one-time, operator does this manually per README instructions — do not script repo creation with a hardcoded password) and `RESTIC_PASSWORD`/`RESTIC_REPOSITORY` sourced from a `chmod 600` env file on the Mac, never committed.
 - [x] Task 3: Restore script (AC: 2)
-  - [x] Subtask 3.1: `deploy/restore.sh` — target a scratch box/VM (fresh Docker host, no existing `~/carwal/`): `restic restore latest --target <path>` for the dump + media snapshot, `scp`/copy `compose.yml` + `caddy/` there, bring up `db` only, `gunzip -c <dump>.sql.gz | docker compose exec -T db psql -U carwal carwal` (or `pg_restore` if the dump is custom-format — plain SQL dump via Subtask 1.1 uses `psql`), restore `~/carwal/media/` from the snapshot, then `docker compose up -d --wait db` → migrate → `docker compose up -d`.
+  - [x] Subtask 3.1: `deploy/restore.sh` — target a scratch box/VM (fresh Docker host, no existing `~/carwal/`): `restic restore latest --target <path>` for the dump + media snapshot, `scp`/copy `compose.yml` there (`caddy/` intentionally not copied/started — AC2 only requires the app to boot against restored data, not TLS/routing), bring up `db` only, `gunzip -c <dump>.sql.gz | docker compose exec -T db psql -U carwal carwal` (or `pg_restore` if the dump is custom-format — plain SQL dump via Subtask 1.1 uses `psql`), restore `~/carwal/media/` from the snapshot, then `docker compose up -d --wait db` → migrate → `docker compose up -d`.
   - [x] Subtask 3.2: Health-check + login smoke test against the scratch box (reuse the `deploy.sh` health-poll pattern) to confirm the app boots against restored data.
 - [x] Task 4: Rehearsal + documentation (AC: 2)
   - [x] Subtask 4.1: Run one real backup (`deploy/backup.sh`) against the deployed `carwal.cloud` seed data, then run `deploy/restore.sh` against a scratch VM/box.
@@ -95,6 +95,23 @@ Claude Sonnet 5 (bmad-dev-story workflow)
 - `deploy/test-backup-scripts.sh` (new)
 - `deploy/compose.yml` (modified — `media` bind mount on `app`)
 - `deploy/README.md` (modified — Backup & Restore section appended)
+
+### Review Findings
+
+- [x] [Review][Defer] Rehearsal scratch target was a second docker-compose project on the same Mac, not a separate "scratch box/VM" [deploy/restore.sh] — deferred, no resources (no second host available)
+- [x] [Review][Patch] `restore.sh` swallows a `gunzip` failure during Postgres restore — nested `bash -c`/`ssh` in `remote_run` doesn't inherit `pipefail`, so a corrupt/truncated dump can silently produce a partial restore reported as success [deploy/restore.sh:46-51,125]
+- [x] [Review][Patch] `backup.sh` rsync pulls lack `--delete` — files removed from the VPS since the last run persist forever in the local staging dir and keep getting fed into every future `restic backup` [deploy/backup.sh:47-48]
+- [x] [Review][Patch] `backup.sh` assumes `~/carwal/backups` and `~/carwal/media` already exist on the VPS (fails opaquely on a fresh box) and Subtask 1.2's "create it now" isn't actually automated — add an idempotent `ssh ... mkdir -p ~/carwal/backups ~/carwal/media` before the scp/rsync steps [deploy/backup.sh:39-48]
+- [x] [Review][Patch] `backup-remote.sh` leaves a partial/corrupt `.sql.gz` on disk if `pg_dump` fails mid-stream, with no cleanup — a later restore's `sort | tail -n1` could pick it up as the latest dump [deploy/backup-remote.sh:19]
+- [x] [Review][Patch] `restore.sh` silently skips copying media with no warning when no `media` directory is found in the snapshot, masking a possible layout mismatch or corrupted snapshot [deploy/restore.sh:98,108-111]
+- [x] [Review][Patch] `restore.sh`'s `db` wait-timeout (60s) is inconsistent with the app health poll's 120s allowance, which Dev Notes attribute to documented QEMU/arm64 emulation slowness — `db` could time out under the same conditions [deploy/restore.sh:122,134]
+- [x] [Review][Patch] Subtask 3.1 is checked off as if `caddy/` was copied to the restore target, but it deliberately isn't (correct per AC2 — TLS/routing isn't required) — reword the subtask/Completion Notes so the checklist reflects what was actually built
+- [x] [Review][Defer] SSH hardening (`ConnectTimeout`/`ServerAliveInterval`) called out as deferred in Dev Notes but never logged to `deferred-work.md` per the story's own convention [deploy/backup.sh, deploy/restore.sh] — deferred, pre-existing pattern gap
+- [x] [Review][Defer] VPS `compose.yml` not yet redeployed with the new media bind mount — Task 1.2's "day one" backup target isn't live on `carwal.cloud` [deploy/compose.yml] — deferred, follow-up `deploy.sh` run
+- [x] [Review][Defer] `restore.sh`'s remote-host mode (`SCRATCH_HOST=user@host`) is implemented but was never exercised — only the local-scratch path has been validated [deploy/restore.sh:14-16] — deferred, needs a second host
+- [x] [Review][Defer] `com.carwal.backup.plist` log (`/tmp/carwal-backup.log`) isn't permission-hardened or rotated, and a failed backup produces no operator-visible notification [deploy/com.carwal.backup.plist] — deferred, ops polish
+- [x] [Review][Defer] `test-backup-scripts.sh` only checks syntax and the missing-env-file guard — no coverage of partial-env-var rejection or actual restore logic [deploy/test-backup-scripts.sh] — deferred, test coverage improvement
+- [x] [Review][Defer] `restore.sh` gives no operator-friendly distinction between "repo not initialized," "wrong password," and "network unreachable" restic failures — just crashes via `set -euo pipefail` [deploy/restore.sh:91] — deferred, DR-script UX polish
 
 ## Change Log
 
