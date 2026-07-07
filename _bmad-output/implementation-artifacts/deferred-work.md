@@ -44,3 +44,7 @@ Items deferred from code reviews and other workflows. Each entry: where it came 
 - source_spec: `_bmad-output/implementation-artifacts/1-3-deploy-to-the-vps-over-https.md`
   summary: Print Docker compose logs on health check timeout in deploy.sh.
   evidence: If the container crashes on boot during deploy, the deploy script hangs for 120 seconds and then exits with timeout, without showing the crash traceback or logs of the failed container.
+
+## Deferred from: code review of 1-3-deploy-to-the-vps-over-https.md (2026-07-07)
+
+- **Health check check DNS Latency risk**: Polling `https://$CARWAL_DOMAIN/health` from the local machine is susceptible to DNS latency, which can cause the script to report a failed deployment even if the server is healthy.

@@ -70,6 +70,15 @@ so that the family reaches CarWal at its domain and every later deploy is one co
   - [x] `mix precommit` green (compile --warnings-as-errors, deps.unlock --unused, format, test) against local `carwal-pg` on 5433. The runtime.exs changes (Task 2) must not break test env — the port-override guard is exactly for that.
   - [x] `docker buildx build --platform linux/amd64` completes locally (slow under QEMU — expect minutes, that is normal, not a hang).
 
+### Review Findings
+
+- [x] [Review][Patch] CARWAL_DOMAIN is not passed to the remote environment in deploy.sh [deploy/deploy.sh]
+- [x] [Review][Patch] Infinite loop / lack of timeout in database readiness check in deploy/deploy.sh [deploy/deploy.sh]
+- [x] [Review][Patch] Potential directory nesting when copying caddy config in deploy/deploy.sh [deploy/deploy.sh]
+- [x] [Review][Patch] Health check route /health does not use a minimal pipeline (:accepts check) [lib/carwal_web/router.ex]
+- [x] [Review][Patch] Mutable Caddy image tag [deploy/compose.yml]
+- [x] [Review][Defer] Health check check DNS Latency risk [deploy/deploy.sh] — deferred, pre-existing
+
 ## Dev Notes
 
 ### Critical guardrails (read before coding)
