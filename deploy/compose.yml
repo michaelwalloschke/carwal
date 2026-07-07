@@ -15,15 +15,23 @@ services:
         condition: service_healthy
     restart: unless-stopped
     logging: *default_logging
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
 
   db:
     image: postgres:18
     env_file:
-      - .env.prod
+      - .env.db
     environment:
       POSTGRES_USER: carwal
       POSTGRES_DB: carwal
-      # POSTGRES_PASSWORD is read from .env.prod
+      # POSTGRES_PASSWORD is read from .env.db (scoped: only that var, not the
+      # full .env.prod, so app secrets + family PII do not leak into the db
+      # container env / `docker inspect`).
     volumes:
       - pgdata:/var/lib/postgresql
     healthcheck:
@@ -49,7 +57,8 @@ services:
       - CARWAL_DOMAIN
     restart: unless-stopped
     depends_on:
-      - app
+      app:
+        condition: service_healthy
 
 volumes:
   pgdata:

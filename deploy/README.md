@@ -33,6 +33,14 @@ Before running your first deployment, create a `.env.prod` file on the target VP
 
 This means **any manual `docker compose` command** run from `~/carwal/` (e.g. `docker compose restart caddy`, `docker compose up -d` after a VPS reboot) also picks up `CARWAL_DOMAIN` from `~/carwal/.env` — no need to prefix it on the shell. Do not delete `~/carwal/.env`.
 
+### `~/carwal/.env.db` (auto-generated, do not create by hand)
+
+The `db` service must not load the full `.env.prod` — that would expose `SECRET_KEY_BASE`, `SMTP_PASSWORD`, and `FAMILY_*_EMAIL` (family PII) to the Postgres container env (visible via `docker inspect`). Instead `deploy.sh` extracts only `POSTGRES_PASSWORD` from `.env.prod` into `~/carwal/.env.db` (`chmod 600`) on every run, and `compose.yml` points the `db` service at `.env.db`. Operators only ever create `.env.prod`; `.env.db` is regenerated each deploy — do not create or edit it by hand.
+
+### App healthcheck + Caddy readiness gate
+
+The `app` container has a healthcheck (`curl -fsS http://localhost:4000/health` — `curl` is installed in the runner image). Caddy's `depends_on: app` uses `condition: service_healthy`, so Caddy does not receive traffic until Bandit is actually serving, closing the post-restart 502 window. Because the healthcheck needs `curl` in the image, a deploy (`deploy.sh`, which rebuilds + ships the image) is required after any runner-image change before the gate works on a reboot.
+
 ### Real Family Members (PII via Environment)
 
 These variables must be populated with the actual names and email addresses of the family members:
