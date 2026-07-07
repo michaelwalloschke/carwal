@@ -141,3 +141,59 @@ Throttle: one live link per member per 15-min window (Story 1.2) — a second re
 **Result (2026-07-07):** mail delivered. Headers confirmed the intended path: `Received: from customer (localhost [127.0.0.1]) by submission (posteo.de) with ESMTPSA` — gen_smtp connected to the `posteo.de:587` submission relay, authenticated (Posteo app password), STARTTLS; Posteo → Gmail over TLS 1.3; DKIM/SPF/DMARC pass. Operator clicked the link on a phone → logged in, 10-year session cookie set over HTTPS.
 
 > **SMTP relay must use `no_mx_lookups: true`.** The first attempt failed with `{:retries_exceeded, {:network_failure, "mx04.posteo.de", {:error, :timeout}}}`: with `no_mx_lookups: false`, gen_smtp MX-resolved the relay `posteo.de` and connected to `mx04.posteo.de` (the inbound MX, port 25 — submission not accepted there) → timeout. `runtime.exs` sets `no_mx_lookups: true` so gen_smtp connects directly to the configured relay host on port 587. This applies to any sovereign submission relay (Posteo, mailbox.org), not just Posteo.
+
+---
+
+## 💾 Backup & Restore (Story 1.5)
+
+Pull-based: the operator's FileVault'd Mac initiates every backup over SSH.
+The VPS never pushes to the Mac and never runs restic itself — it only
+stages a Postgres dump and serves `~/carwal/media/` over SSH.
+
+### Env contract (`~/.carwal-backup.env` on the Mac, `chmod 600`, never committed)
+
+*   `CARWAL_HOST`: SSH target for the VPS, same convention as `deploy.sh` (e.g. `root@carwal.cloud`).
+*   `RESTIC_REPOSITORY`: restic repository location — a local path on the FileVault'd volume, or an `sftp:`/`rest:` URL, whichever the operator's restic setup uses.
+*   `RESTIC_PASSWORD`: restic repository password.
+
+`deploy/backup.sh` and `deploy/restore.sh` both read this file (default path `~/.carwal-backup.env`, override with an explicit path argument).
+
+### One-time setup (operator, manual — do not script)
+
+1.  **`restic init`** against the chosen `RESTIC_REPOSITORY` — like `.env.prod` creation, this is a manual step so the repository password is never baked into a script:
+    ```bash
+    RESTIC_REPOSITORY=/path/to/repo RESTIC_PASSWORD=... restic init
+    ```
+2.  **`~/carwal/media/` on the VPS**: created once so the backup target exists from day one (empty until Epic 4's `CarWal.Storage` starts writing there):
+    ```bash
+    ssh "$CARWAL_HOST" "mkdir -p ~/carwal/media"
+    ```
+3.  **launchd install** (Mac): edit `deploy/com.carwal.backup.plist`'s `ProgramArguments` path to the absolute path of this repo's `deploy/backup.sh` on your Mac, then:
+    ```bash
+    cp deploy/com.carwal.backup.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.carwal.backup.plist
+    ```
+    `StartCalendarInterval` (not `cron`) means launchd re-evaluates and catches up on missed runs after the Mac wakes from sleep.
+
+### Running a backup manually
+
+```bash
+./deploy/backup.sh ~/.carwal-backup.env
+```
+
+Triggers a fresh `pg_dump` + prune on the VPS, pulls the dump and `media/` down over SSH, and adds a new restic snapshot.
+
+### Running a restore rehearsal
+
+```bash
+# Local scratch (separate docker compose project on this Mac, default):
+./deploy/restore.sh ~/.carwal-backup.env
+
+# Remote scratch (fresh Docker host over SSH, never the live VPS):
+SCRATCH_HOST=user@scratch-host ./deploy/restore.sh ~/.carwal-backup.env
+```
+
+Restores the latest snapshot, replays the Postgres dump and media into a
+scratch target, boots the app (without Caddy — no TLS needed for the
+rehearsal), and health-/login-checks it. See `deploy/RESTORE.md` for the
+first rehearsal's full record and results.

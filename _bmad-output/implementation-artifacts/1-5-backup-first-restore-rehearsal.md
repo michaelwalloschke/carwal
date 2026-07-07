@@ -1,6 +1,10 @@
+---
+baseline_commit: 6589bd526bc4bbaea1e12d21622a2a9e6d1a29ef
+---
+
 # Story 1.5: Backup + First Restore Rehearsal
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,20 +21,20 @@ so that family data (especially media) survives the loss of the box.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Remote pg_dump + media staging script on the VPS (AC: 1)
-  - [ ] Subtask 1.1: `deploy/backup-remote.sh` (runs on VPS via SSH, or SSH'd into from the launchd job): `docker compose exec -T db pg_dump -U carwal carwal | gzip > ~/carwal/backups/carwal-$(date +%Y%m%d-%H%M%S).sql.gz`, prune dumps older than N days (keep last 7 locally — restic keeps the real history).
-  - [ ] Subtask 1.2: Create `~/carwal/media/` directory on the VPS now (empty — no Storage adapter exists yet, ships in Epic 4/AD-11) so the backup target exists from day one and Epic 4 needs zero backup-side changes when it starts writing there. Bind-mount it into the `app` service in `compose.yml` at a path `CarWal.Storage`'s future local-disk adapter will use (document the convention; do not implement the adapter).
-- [ ] Task 2: launchd LaunchAgent on the MacBook (AC: 1)
-  - [ ] Subtask 2.1: `deploy/com.carwal.backup.plist` — `StartCalendarInterval` (e.g. daily), `RunAtLoad: false`, catches up after sleep/wake because launchd re-evaluates missed calendar intervals on wake (unlike `cron`).
-  - [ ] Subtask 2.2: `deploy/backup.sh` (runs on the Mac): SSH to VPS to trigger `backup-remote.sh` (dump + prune), then `restic backup` over SSH (`sftp:` or `rest:` backend, whichever the operator's restic repo uses) pulling `~/carwal/backups/` (dumps) and `~/carwal/media/` from the VPS into the restic repo on the FileVault'd volume. Pull-based: initiated from the Mac, not the VPS, per spine.
-  - [ ] Subtask 2.3: `restic init` (one-time, operator does this manually per README instructions — do not script repo creation with a hardcoded password) and `RESTIC_PASSWORD`/`RESTIC_REPOSITORY` sourced from a `chmod 600` env file on the Mac, never committed.
-- [ ] Task 3: Restore script (AC: 2)
-  - [ ] Subtask 3.1: `deploy/restore.sh` — target a scratch box/VM (fresh Docker host, no existing `~/carwal/`): `restic restore latest --target <path>` for the dump + media snapshot, `scp`/copy `compose.yml` + `caddy/` there, bring up `db` only, `gunzip -c <dump>.sql.gz | docker compose exec -T db psql -U carwal carwal` (or `pg_restore` if the dump is custom-format — plain SQL dump via Subtask 1.1 uses `psql`), restore `~/carwal/media/` from the snapshot, then `docker compose up -d --wait db` → migrate → `docker compose up -d`.
-  - [ ] Subtask 3.2: Health-check + login smoke test against the scratch box (reuse the `deploy.sh` health-poll pattern) to confirm the app boots against restored data.
-- [ ] Task 4: Rehearsal + documentation (AC: 2)
-  - [ ] Subtask 4.1: Run one real backup (`deploy/backup.sh`) against the deployed `carwal.cloud` seed data, then run `deploy/restore.sh` against a scratch VM/box.
-  - [ ] Subtask 4.2: Write `deploy/RESTORE.md`: prerequisites, exact commands run, timing, what was verified (app boots, login page renders, seeded members present), and a flagged TODO to re-run this rehearsal with real family data once Epic 2/3 content exists (per AC2).
-  - [ ] Subtask 4.3: Document the full backup env contract (`RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, restic backend choice, launchd install steps) in `deploy/README.md`, following the existing `.env.prod` contract style.
+- [x] Task 1: Remote pg_dump + media staging script on the VPS (AC: 1)
+  - [x] Subtask 1.1: `deploy/backup-remote.sh` (runs on VPS via SSH, or SSH'd into from the launchd job): `docker compose exec -T db pg_dump -U carwal carwal | gzip > ~/carwal/backups/carwal-$(date +%Y%m%d-%H%M%S).sql.gz`, prune dumps older than N days (keep last 7 locally — restic keeps the real history).
+  - [x] Subtask 1.2: Create `~/carwal/media/` directory on the VPS now (empty — no Storage adapter exists yet, ships in Epic 4/AD-11) so the backup target exists from day one and Epic 4 needs zero backup-side changes when it starts writing there. Bind-mount it into the `app` service in `compose.yml` at a path `CarWal.Storage`'s future local-disk adapter will use (document the convention; do not implement the adapter).
+- [x] Task 2: launchd LaunchAgent on the MacBook (AC: 1)
+  - [x] Subtask 2.1: `deploy/com.carwal.backup.plist` — `StartCalendarInterval` (e.g. daily), `RunAtLoad: false`, catches up after sleep/wake because launchd re-evaluates missed calendar intervals on wake (unlike `cron`).
+  - [x] Subtask 2.2: `deploy/backup.sh` (runs on the Mac): SSH to VPS to trigger `backup-remote.sh` (dump + prune), then `restic backup` over SSH (`sftp:` or `rest:` backend, whichever the operator's restic repo uses) pulling `~/carwal/backups/` (dumps) and `~/carwal/media/` from the VPS into the restic repo on the FileVault'd volume. Pull-based: initiated from the Mac, not the VPS, per spine.
+  - [x] Subtask 2.3: `restic init` (one-time, operator does this manually per README instructions — do not script repo creation with a hardcoded password) and `RESTIC_PASSWORD`/`RESTIC_REPOSITORY` sourced from a `chmod 600` env file on the Mac, never committed.
+- [x] Task 3: Restore script (AC: 2)
+  - [x] Subtask 3.1: `deploy/restore.sh` — target a scratch box/VM (fresh Docker host, no existing `~/carwal/`): `restic restore latest --target <path>` for the dump + media snapshot, `scp`/copy `compose.yml` + `caddy/` there, bring up `db` only, `gunzip -c <dump>.sql.gz | docker compose exec -T db psql -U carwal carwal` (or `pg_restore` if the dump is custom-format — plain SQL dump via Subtask 1.1 uses `psql`), restore `~/carwal/media/` from the snapshot, then `docker compose up -d --wait db` → migrate → `docker compose up -d`.
+  - [x] Subtask 3.2: Health-check + login smoke test against the scratch box (reuse the `deploy.sh` health-poll pattern) to confirm the app boots against restored data.
+- [x] Task 4: Rehearsal + documentation (AC: 2)
+  - [x] Subtask 4.1: Run one real backup (`deploy/backup.sh`) against the deployed `carwal.cloud` seed data, then run `deploy/restore.sh` against a scratch VM/box.
+  - [x] Subtask 4.2: Write `deploy/RESTORE.md`: prerequisites, exact commands run, timing, what was verified (app boots, login page renders, seeded members present), and a flagged TODO to re-run this rehearsal with real family data once Epic 2/3 content exists (per AC2).
+  - [x] Subtask 4.3: Document the full backup env contract (`RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, restic backend choice, launchd install steps) in `deploy/README.md`, following the existing `.env.prod` contract style.
 
 ## Dev Notes
 
@@ -65,12 +69,34 @@ so that family data (especially media) survives the loss of the box.
 
 ### Agent Model Used
 
+Claude Sonnet 5 (bmad-dev-story workflow)
+
 ### Debug Log References
+
+- Real rehearsal run 2026-07-07: `deploy/backup.sh` against `carwal.cloud` (restic snapshot `f50dbb29`), `deploy/restore.sh` against a local scratch docker compose project (`carwal-scratch`) on the operator's Mac. Full record in `deploy/RESTORE.md`.
 
 ### Completion Notes List
 
+- Implemented `deploy/backup-remote.sh`, `deploy/backup.sh`, `deploy/restore.sh`, `deploy/com.carwal.backup.plist` per Dev Notes conventions (`set -euo pipefail`, `chmod 600` guards, `deploy.sh`-style health polling).
+- `restore.sh` supports two scratch-target modes: local docker compose project (`SCRATCH_HOST` unset — used for this rehearsal, no second host available) and remote SSH host (`SCRATCH_HOST=user@host` — implemented but not exercised, only one VPS available).
+- Restore skips starting `caddy` — AC2 only requires the app to boot against restored data and the login page to render, not TLS/routing, so health/login checks run via `docker compose exec app curl ...` against the app container directly.
+- Added `deploy/test-backup-scripts.sh`: syntax check (`bash -n`) + missing-env-file guard checks for all three scripts (no real infra needed, run manually).
+- Ran the real rehearsal end-to-end with user-provided VPS access (`root@carwal.cloud`, passwordless SSH): installed `restic` locally, `restic init`'d a new FileVault'd repo, ran a real `pg_dump`-based backup, then a full restore into a local scratch stack — health check `200`, login page renders German text, restored user count (3) matches the seeded `carwal.cloud` data. Full record: `deploy/RESTORE.md`.
+- One operator action needed mid-rehearsal: `~/carwal/media/` didn't exist yet on the VPS (Subtask 1.2's "create it now" step) — created manually via `ssh root@carwal.cloud "mkdir -p ~/carwal/media"`. Documented in `deploy/README.md`'s one-time setup steps.
+- Flagged in `deploy/RESTORE.md`: the VPS `compose.yml` was not redeployed with the new media bind mount during this rehearsal (no data at risk since media is still empty) — a normal follow-up `deploy.sh` run, not a story blocker.
+
 ### File List
+
+- `deploy/backup-remote.sh` (new)
+- `deploy/backup.sh` (new)
+- `deploy/restore.sh` (new)
+- `deploy/com.carwal.backup.plist` (new)
+- `deploy/RESTORE.md` (new)
+- `deploy/test-backup-scripts.sh` (new)
+- `deploy/compose.yml` (modified — `media` bind mount on `app`)
+- `deploy/README.md` (modified — Backup & Restore section appended)
 
 ## Change Log
 
 - 2026-07-07: Story 1.5 created from epics + architecture spine. Status → ready-for-dev.
+- 2026-07-07: Implemented Tasks 1-4 (backup/restore scripts, launchd plist, docs), ran real backup + restore rehearsal against `carwal.cloud`. Status → review.
