@@ -100,6 +100,13 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Web Push configuration using ex_nudge
+config :ex_nudge,
+  vapid_subject: "mailto:operator@carwal.local",
+  vapid_public_key:
+    "BLqkZjqHaBrmFpYMto__xa5Pr-WENsSv9zOadMOHw_f3ZMjSL0Zcv-ouvHr-L9hwok5Bfo8gXnApA70QcH_r9J4",
+  vapid_private_key: "l3GEXt6dOO4xznWgjVnymtQHs4M39MG1rkJ-cRT57bs"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

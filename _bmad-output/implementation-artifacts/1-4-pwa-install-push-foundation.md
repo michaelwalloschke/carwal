@@ -1,6 +1,10 @@
+---
+baseline_commit: bd014d722ac8ca3ab1f02e967858e945e6b0da70
+---
+
 # Story 1.4: PWA Install + Push Foundation
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- baseline_commit: to be stamped by dev-story at implementation start. Branch off main (3e1d50b,
@@ -20,9 +24,9 @@ so that the app feels native and notifications provably arrive on my device.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add `ex_nudge` + VAPID config (AC: 2)
-  - [ ] Add `{:ex_nudge, "~> 1.0"}` to `mix.exs` `deps/0` and `mix deps.get`. Current ex_nudge is **1.0.2**. It pulls **HTTPoison** transitively (CarWal uses Req elsewhere — no conflict, but a second HTTP client enters the release; do not "fix" this by swapping ex_nudge for a Req-based push lib, the spine pins ex_nudge 1.0.x).
-  - [ ] Generate a **dev/test** VAPID keypair: `mix run -e 'IO.inspect(ExNudge.generate_vapid_keys())'`. Commit it in `config/config.exs`:
+-- [x] Task 1: Add `ex_nudge` + VAPID config (AC: 2)
+  - [x] Add `{:ex_nudge, "~> 1.0"}` to `mix.exs` `deps/0` and `mix deps.get`. Current ex_nudge is **1.0.2**. It pulls **HTTPoison** transitively (CarWal uses Req elsewhere — no conflict, but a second HTTP client enters the release; do not "fix" this by swapping ex_nudge for a Req-based push lib, the spine pins ex_nudge 1.0.x).
+  - [x] Generate a **dev/test** VAPID keypair: `mix run -e 'IO.inspect(ExNudge.generate_vapid_keys())'`. Commit it in `config/config.exs`:
     ```elixir
     config :ex_nudge,
       vapid_subject: "mailto:operator@carwal.local",
@@ -30,37 +34,37 @@ so that the app feels native and notifications provably arrive on my device.
       vapid_private_key: "<dev private key>"
     ```
     These dev keys are **not secret** — they mirror the committed `signing_salt` / dev `secret_key_base` in `config/dev.exs` + `config/test.exs`. Dev/test only; prod must override.
-  - [ ] Prod: in `config/runtime.exs` inside the `if config_env() == :prod do` block, read `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` via the existing `read_env` helper and **raise if missing/empty** (mirror `SECRET_KEY_BASE` / `SMTP_PASSWORD` — controlled boot failure, not a silent no-push). `VAPID_SUBJECT` defaults to `"mailto:" <> mail_from` where `mail_from` is the already-bound `MAIL_FROM` (or `SMTP_USERNAME`); accept an explicit `VAPID_SUBJECT` env override. Then:
+  - [x] Prod: in `config/runtime.exs` inside the `if config_env() == :prod do` block, read `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` via the existing `read_env` helper and **raise if missing/empty** (mirror `SECRET_KEY_BASE` / `SMTP_PASSWORD` — controlled boot failure, not a silent no-push). `VAPID_SUBJECT` defaults to `"mailto:" <> mail_from` where `mail_from` is the already-bound `MAIL_FROM` (or `SMTP_USERNAME`); accept an explicit `VAPID_SUBJECT` env override. Then:
     ```elixir
     config :ex_nudge,
       vapid_subject: vapid_subject,
       vapid_public_key: vapid_public_key,
       vapid_private_key: vapid_private_key
     ```
-  - [ ] Extend `deploy/README.md` env contract with: `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` (required, raise at boot if missing/empty — generate with `mix run -e 'IO.inspect(ExNudge.generate_vapid_keys())'` locally and paste into `.env.prod`), optional `VAPID_SUBJECT` (default `mailto:<MAIL_FROM>`). Prod VAPID keys are **never** committed (same rule as `SECRET_KEY_BASE` / `SMTP_PASSWORD`). Note a redeploy is required for the first push-capable build (new dep + new migration; `deploy.sh` rebuilds the image and runs `Release.migrate()` automatically).
-- [ ] Task 2: `push_subscriptions` schema + migration (AC: 2, 3; AD-1, AD-13)
-  - [ ] `lib/carwal/notifications/push_subscription.ex` — Ecto schema for the `push_subscriptions` table (Notifications owns it per AD-1). Fields: `id`, `user_id` (`belongs_to :user`, `CarWal.Accounts.User`), `endpoint` (`:string`, `null: false`), `p256dh` (`:string`, `null: false`), `auth` (`:string`, `null: false`), timestamps `type: :utc_datetime`. No `expiration_time` column in v1 — the browser usually sends `null` and nothing reads it (YAGNI; add when a feature needs it).
-  - [ ] Migration `priv/repo/migrations/<timestamp>_create_push_subscriptions.exs`: `create table(:push_subscriptions)` with `add :user_id, references(:users, on_delete: :delete_all)`, `add :endpoint, :string, null: false`, `add :p256dh, :string, null: false`, `add :auth, :string, null: false`, timestamps; then `create unique_index(:push_subscriptions, [:user_id, :endpoint])`. **This unique index IS the AD-13 `(user_id, endpoint)` key** — a second device of the same user has a different `endpoint`, so it inserts (AC3); re-subscribing the same device upserts (Task 3).
-  - [ ] Changeset: `cast(..., [:user_id, :endpoint, :p256dh, :auth])` + `validate_required([...])` + `unique_constraint([:user_id, :endpoint])`.
-- [ ] Task 3: `Notifications` context API — the single push pipeline (AC: 2, 3; AD-7, AD-13)
-  - [ ] Replace the `lib/carwal/notifications.ex` stub with the real context. `alias CarWal.Notifications.PushSubscription`, `alias CarWal.Repo`, `import Ecto.Query`. All public functions return `{:ok, _} | {:error, _}` (spine Errors convention):
+  - [x] Extend `deploy/README.md` env contract with: `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` (required, raise at boot if missing/empty — generate with `mix run -e 'IO.inspect(ExNudge.generate_vapid_keys())'` locally and paste into `.env.prod`), optional `VAPID_SUBJECT` (default `mailto:<MAIL_FROM>`). Prod VAPID keys are **never** committed (same rule as `SECRET_KEY_BASE` / `SMTP_PASSWORD`). Note a redeploy is required for the first push-capable build (new dep + new migration; `deploy.sh` rebuilds the image and runs `Release.migrate()` automatically).
+- [x] Task 2: `push_subscriptions` schema + migration (AC: 2, 3; AD-1, AD-13)
+  - [x] `lib/carwal/notifications/push_subscription.ex` — Ecto schema for the `push_subscriptions` table (Notifications owns it per AD-1). Fields: `id`, `user_id` (`belongs_to :user`, `CarWal.Accounts.User`), `endpoint` (`:string`, `null: false`), `p256dh` (`:string`, `null: false`), `auth` (`:string`, `null: false`), timestamps `type: :utc_datetime`. No `expiration_time` column in v1 — the browser usually sends `null` and nothing reads it (YAGNI; add when a feature needs it).
+  - [x] Migration `priv/repo/migrations/<timestamp>_create_push_subscriptions.exs`: `create table(:push_subscriptions)` with `add :user_id, references(:users, on_delete: :delete_all)`, `add :endpoint, :string, null: false`, `add :p256dh, :string, null: false`, `add :auth, :string, null: false`, timestamps; then `create unique_index(:push_subscriptions, [:user_id, :endpoint])`. **This unique index IS the AD-13 `(user_id, endpoint)` key** — a second device of the same user has a different `endpoint`, so it inserts (AC3); re-subscribing the same device upserts (Task 3).
+  - [x] Changeset: `cast(..., [:user_id, :endpoint, :p256dh, :auth])` + `validate_required([...])` + `unique_constraint([:user_id, :endpoint])`.
+- [x] Task 3: `Notifications` context API — the single push pipeline (AC: 2, 3; AD-7, AD-13)
+  - [x] Replace the `lib/carwal/notifications.ex` stub with the real context. `alias CarWal.Notifications.PushSubscription`, `alias CarWal.Repo`, `import Ecto.Query`. All public functions return `{:ok, _} | {:error, _}` (spine Errors convention):
     - `register_subscription(user, endpoint, keys)` where `keys` is `%{p256dh: String.t(), auth: String.t()}` — **upsert** keyed `(user_id, endpoint)`: on conflict, update `p256dh`/`auth` (browser key rotation). Use `Repo.insert(changeset, conflict_target: {:unsafe, [:user_id, :endpoint]}, on_conflict: :replace_all, conflict_target_constraint: ...) ` or `{:conflict, replace: [:p256dh, :auth, :updated_at]}` — pick the smallest working form; the goal is idempotent re-subscribe. Return `{:ok, sub}`.
     - `list_subscriptions_for_user(user)` → `PushSubscription` list for the device list + test push.
     - `unsubscribe(user, endpoint)` → delete the `(user_id, endpoint)` row (scoped to `user.id` so a member can only drop their own subs). Return `{:ok, _}`.
     - `send_test_push(user)` → for each `list_subscriptions_for_user/1`, build `%ExNudge.Subscription{endpoint: sub.endpoint, keys: %{p256dh: sub.p256dh, auth: sub.auth}}` and call the private `send/2` with a minimal German payload (e.g. `"Test-Benachrichtigung von CarWal"`). Return `{:ok, sent_count}` (or `{:ok, results}`).
     - Private `send(subscription, payload)` — wraps `ExNudge.send_notification/2`; on `{:error, :subscription_expired}` **delete the stale sub** (cleanup — keeps the table from rotting) and continue; `Logger.warning` other errors and continue. **AD-7: only `Notifications` calls `ExNudge`** — future stories (2.5, 3.3, 3.4) call `Notifications.send_*`, never ex_nudge directly. This is the foundation of the single push pipeline.
-- [ ] Task 4: PWA manifest + service worker + static plumbing (AC: 1)
-  - [ ] `priv/static/manifest.json`: `name: "CarWal"`, `short_name: "CarWal"`, `start_url: "/"`, `scope: "/"`, `display: "standalone"`, `background_color` + `theme_color` (pick a value matching the daisyUI base palette; document the choice), `icons: [{"src": "/images/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]` — reuse the existing `priv/static/images/logo.svg`.
+- [x] Task 4: PWA manifest + service worker + static plumbing (AC: 1)
+  - [x] `priv/static/manifest.json`: `name: "CarWal"`, `short_name: "CarWal"`, `start_url: "/"`, `scope: "/"`, `display: "standalone"`, `background_color` + `theme_color` (pick a value matching the daisyUI base palette; document the choice), `icons: [{"src": "/images/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]` — reuse the existing `priv/static/images/logo.svg`.
     - **Guardrail (verified 2026-07):** current Chrome accepts a single SVG icon with `sizes: "any"` for installability — ship SVG-only first (ponytail: shortest path). **Only if** the live Android Chrome smoke test (Task 9) reports the app not installable without raster icons, generate `priv/static/images/icon-192.png` + `icon-512.png` from `logo.svg` (e.g. `rsvg-convert -w 512 -h 512 priv/static/images/logo.svg > priv/static/images/icon-512.png`) and add both entries to `icons`. Do not pre-generate PNGs speculatively.
-  - [ ] `priv/static/sw.js` — minimal service worker: `push` event → `event.waitUntil(self.registration.showNotification("CarWal", {body: event.data?.text() ?? "", icon: "/images/logo.svg", badge: "/images/logo.svg", data: {url: "/"}}))`; `notificationclick` → `event.waitUntil(clients.matchAll({type:'window'}).then(...openWindow("/")))`. **No precaching / no fetch handler** — the app is online-first over LiveView; a precache layer is YAGNI and would just stale the LiveView WS.
-  - [ ] `lib/carwal_web.ex` `static_paths/0`: add `"manifest.json"` and `"sw.js"` to the `only` list so `Plug.Static` serves them at root. Reference them with **literal paths** (`href="/manifest.json"`, `register('/sw.js')`), **not `~p`** — the URL must stay stable (the SW scope depends on it). `mix phx.digest` will also create digested siblings + a `.gz`, but the originals at `/manifest.json` + `/sw.js` remain served by `Plug.Static`, so the literal paths keep working.
-  - [ ] `lib/carwal_web/components/layouts/root.html.heex` `<head>`: add `<link rel="manifest" href="/manifest.json" />`, `<meta name="theme-color" content="<same as manifest theme_color>" />`, `<meta name="apple-mobile-web-app-capable" content="yes" />`, `<meta name="apple-mobile-web-app-status-bar-style" content="default" />`, `<link rel="apple-touch-icon" href="/images/logo.svg" />`. Keep the existing theme script untouched.
-  - [ ] `start_url: "/"` lands a logged-in member on the Phoenix starter promo (root `/` is promo until Epic 2's agenda view — Story 1.3 noted this). Accepted for 1.4; do not build a landing page here.
-- [ ] Task 5: Push subscription controller — JSON endpoints (AC: 2, 3)
-  - [ ] `lib/carwal_web/controllers/push_controller.ex` (`use CarWalWeb, :controller`). Actions read `conn.assigns.current_scope.user`; if absent, return **401 JSON** (`put_status(:unauthorized) |> json(%{error: "unauthenticated"})`) — do **not** use `require_authenticated_user`, that plug redirects to the login page (HTML), wrong for a JSON API.
-    - `subscribe/2` — parse `%{"endpoint" => e, "keys" => %{"p256dh" => p, "auth" => a}}`; `Notifications.register_subscription(user, e, %{p256dh: p, auth: a})` → `201` + `%{ok: true}` on `{:ok, _}`, `422` + errors on `{:error, changeset}`.
-    - `unsubscribe/2` — parse `%{"endpoint" => e}`; `Notifications.unsubscribe(user, e)` → `200` (or `404` if nothing deleted).
-  - [ ] Routes in `lib/carwal_web/router.ex` — a dedicated `:push` pipeline (cookie-auth + CSRF, JSON accepts) and scope. The browser `fetch` from the SW page sends the session cookie same-origin; CSRF is enforced via the header token the JS hook already has:
+  - [x] `priv/static/sw.js` — minimal service worker: `push` event → `event.waitUntil(self.registration.showNotification("CarWal", {body: event.data?.text() ?? "", icon: "/images/logo.svg", badge: "/images/logo.svg", data: {url: "/"}}))`; `notificationclick` → `event.waitUntil(clients.matchAll({type:'window'}).then(...openWindow("/")))`. **No precaching / no fetch handler** — the app is online-first over LiveView; a precache layer is YAGNI and would just stale the LiveView WS.
+  - [x] `lib/carwal_web.ex` `static_paths/0`: add `"manifest.json"` and `"sw.js"` to the `only` list so `Plug.Static` serves them at root. Reference them with **literal paths** (`href="/manifest.json"`, `register('/sw.js')`), **not `~p`** — the URL must stay stable (the SW scope depends on it). `mix phx.digest` will also create digested siblings + a `.gz`, but the originals at `/manifest.json` + `/sw.js` remain served by `Plug.Static`, so the literal paths keep working.
+  - [x] `lib/carwal_web/components/layouts/root.html.heex` `<head>`: add `<link rel="manifest" href="/manifest.json" />`, `<meta name="theme-color" content="<same as manifest theme_color>" />`, `<meta name="apple-mobile-web-app-capable" content="yes" />`, `<meta name="apple-mobile-web-app-status-bar-style" content="default" />`, `<link rel="apple-touch-icon" href="/images/logo.svg" />`. Keep the existing theme script untouched.
+  - [x] `start_url: "/"` lands a logged-in member on the Phoenix starter promo (root `/` is promo until Epic 2's agenda view — Story 1.3 noted this). Accepted for 1.4; do not build a landing page here.
+- [x] Task 5: Push subscription controller — JSON endpoints (AC: 2, 3)
+  - [x] `lib/carwal_web/controllers/push_controller.ex` (`use CarWalWeb, :controller`). Actions read `conn.assigns.current_scope.user`; if absent, return **401 JSON** (`put_status(:unauthorized) |> json(%{error: "unauthenticated"})`) — do **not** use `require_authenticated_user`, that plug redirects to the login page (HTML), wrong for a JSON API.
+    - [x] `subscribe/2` — parse `%{"endpoint" => e, "keys" => %{"p256dh" => p, "auth" => a}}`; `Notifications.register_subscription(user, e, %{p256dh: p, auth: a})` → `201` + `%{ok: true}` on `{:ok, _}`, `422` + errors on `{:error, changeset}`.
+    - [x] `unsubscribe/2` — parse `%{"endpoint" => e}`; `Notifications.unsubscribe(user, e)` → `200` (or `404` if nothing deleted).
+  - [x] Routes in `lib/carwal_web/router.ex` — a dedicated `:push` pipeline (cookie-auth + CSRF, JSON accepts) and scope. The browser `fetch` from the SW page sends the session cookie same-origin; CSRF is enforced via the header token the JS hook already has:
     ```elixir
     pipeline :push do
       plug :accepts, ["json"]
@@ -76,16 +80,16 @@ so that the app feels native and notifications provably arrive on my device.
     end
     ```
     (`fetch_current_scope_for_user` + `protect_from_forgery` are imported via `import CarWalWeb.UserAuth` already at the top of the router.) The controller's 401 check is the auth gate; `protect_from_forgery` is the CSRF gate (rejects POSTs lacking a valid `x-csrf-token`).
-- [ ] Task 6: Push settings LiveView (AC: 2, 3)
-  - [ ] `lib/carwal_web/live/user_live/push_settings.ex` (`use CarWalWeb, :live_view`). Route `live "/users/push", UserLive.PushSettings, :edit` **inside the existing `live_session :require_authenticated_user`** (AD-13: one live_session/shell — do not create a second live_session).
-  - [ ] `mount/3`: `user = current_scope.user`; `assign(socket, subscriptions: Notifications.list_subscriptions_for_user(user))`; `assign(socket, vapid_public_key: Application.get_env(:ex_nudge, :vapid_public_key))`.
-  - [ ] `render/1`: a push-setup container `id="push-setup" phx-hook="Push" data-vapid-key={@vapid_public_key}` with an "Benachrichtigungen aktivieren" button (plain HTML — the JS hook owns the click, not `phx-click`); the device list (`@subscriptions`) showing a truncated `endpoint` + per-device "Test-Push senden" (`phx-click="send_test_push" phx-value-endpoint={sub.endpoint}`) + "Abbestellen" (`phx-click="unsubscribe" phx-value-endpoint={sub.endpoint}`); and a global "An alle Geräte senden" (`phx-click="send_test_push_all"`). All user-visible strings via `gettext`, German.
-  - [ ] `handle_event`: `"send_test_push"` → `Notifications.send_test_push_to(user, endpoint)` (or filter `send_test_push` to one endpoint); `"send_test_push_all"` → `Notifications.send_test_push(user)`; `"unsubscribe"` → `Notifications.unsubscribe(user, endpoint)`; `"push_subscribed"` / `"push_unsubscribed"` (pushed from the JS hook) → re-query `Notifications.list_subscriptions_for_user/1` and `assign(:subscriptions, ...)`. Flash German success/error (`put_flash`).
-  - [ ] Link from `lib/carwal_web/live/user_live/settings.ex` ("Einstellungen") to `~p"/users/push"` ("Benachrichtigungen") so the page is reachable.
-  - [ ] `send_test_push_to/2` (single endpoint) — add to `Notifications` alongside `send_test_push/1` (AC2's per-device test push) and reuse the private `send/2`.
-- [ ] Task 7: JS push hook + SW registration (AC: 1, 2)
-  - [ ] `assets/js/push.js` — a Phoenix LiveView hook object (`{mounted() {...}}`) exported and added to the `hooks` map in `assets/js/app.js` (`hooks: {...colocatedHooks, Push}`). On `mounted`: read `this.el.dataset.vapidKey`; `navigator.serviceWorker.register('/sw.js')` (idempotent — registering an already-registered SW is a no-op, satisfying AC2's "exactly one service worker"); attach a click listener to the enable button.
-  - [ ] Enable-button click handler:
+- [x] Task 6: Push settings LiveView (AC: 2, 3)
+  - [x] `lib/carwal_web/live/user_live/push_settings.ex` (`use CarWalWeb, :live_view`). Route `live "/users/push", UserLive.PushSettings, :edit` **inside the existing `live_session :require_authenticated_user`** (AD-13: one live_session/shell — do not create a second live_session).
+  - [x] `mount/3`: `user = current_scope.user`; `assign(socket, subscriptions: Notifications.list_subscriptions_for_user(user))`; `assign(socket, vapid_public_key: Application.get_env(:ex_nudge, :vapid_public_key))`.
+  - [x] `render/1`: a push-setup container `id="push-setup" phx-hook="Push" data-vapid-key={@vapid_public_key}` with an "Benachrichtigungen aktivieren" button (plain HTML — the JS hook owns the click, not `phx-click`); the device list (`@subscriptions`) showing a truncated `endpoint` + per-device "Test-Push senden" (`phx-click="send_test_push" phx-value-endpoint={sub.endpoint}`) + "Abbestellen" (`phx-click="unsubscribe" phx-value-endpoint={sub.endpoint}`); and a global "An alle Geräte senden" (`phx-click="send_test_push_all"`). All user-visible strings via `gettext`, German.
+  - [x] `handle_event`: `"send_test_push"` → `Notifications.send_test_push_to(user, endpoint)` (or filter `send_test_push` to one endpoint); `"send_test_push_all"` → `Notifications.send_test_push(user)`; `"unsubscribe"` → `Notifications.unsubscribe(user, endpoint)`; `"push_subscribed"` / `"push_unsubscribed"` (pushed from the JS hook) → re-query `Notifications.list_subscriptions_for_user/1` and `assign(:subscriptions, ...)`. Flash German success/error (`put_flash`).
+  - [x] Link from `lib/carwal_web/live/user_live/settings.ex` ("Einstellungen") to `~p"/users/push"` ("Benachrichtigungen") so the page is reachable.
+  - [x] `send_test_push_to/2` (single endpoint) — add to `Notifications` alongside `send_test_push/1` (AC2's per-device test push) and reuse the private `send/2`.
+- [x] Task 7: JS push hook + SW registration (AC: 1, 2)
+  - [x] `assets/js/push.js` — a Phoenix LiveView hook object (`{mounted() {...}}`) exported and added to the `hooks` map in `assets/js/app.js` (`hooks: {...colocatedHooks, Push}`). On `mounted`: read `this.el.dataset.vapidKey`; `navigator.serviceWorker.register('/sw.js')` (idempotent — registering an already-registered SW is a no-op, satisfying AC2's "exactly one service worker"); attach a click listener to the enable button.
+  - [x] Enable-button click handler:
     ```js
     const reg = await navigator.serviceWorker.ready
     const perm = await Notification.requestPermission()
@@ -103,15 +107,15 @@ so that the app feels native and notifications provably arrive on my device.
     this.pushEvent('push_subscribed')
     ```
     (`csrfToken` is already read at the top of `app.js` — reuse it; do not re-query.)
-  - [ ] **CRITICAL guardrail — do NOT copy the ex_nudge readme placeholder.** It shows `applicationServerKey: 'your_vapid_public_key'` as a string. The browser `PushManager.subscribe` **requires a `BufferSource` (Uint8Array)**, not a string — a string silently fails or throws. Ship a `urlBase64ToUint8Array(base64String)` helper: pad to a multiple of 4, `atob`, map to char codes, `new Uint8Array(arr)`. This is the single most likely LLM-dev mistake in this story.
-  - [ ] Browser-side unsubscribe hygiene is optional for v1 — the server deletes the row on "Abbestellen" (Task 6); the browser's `PushSubscription` persists until the member revokes notification permission. Note this; do not build a client-side `subscription.unsubscribe()` round-trip unless the live test shows stale pushes.
-  - [ ] The `push` + `notificationclick` handlers live in `sw.js` (Task 4), **not** in the hook.
-- [ ] Task 8: Tests (AC: 1, 2, 3)
-  - [ ] `test/carwal/notifications_test.exs` (DataCase): `register_subscription` inserts; re-subscribing the same `(user, endpoint)` upserts (keys rotate, no duplicate row); a second `endpoint` for the same user **coexists** (AC3 — assert `list_subscriptions_for_user/1` returns 2); `list_subscriptions_for_user/1` returns only that user's subs (not another user's); `unsubscribe/2` deletes the row and is scoped (cannot delete another user's sub). Use the accounts fixture (`CarWal.AccountsFixtures` / `register_and_log_in_user` setup).
-  - [ ] Push-send unit test: ex_nudge has **no behaviour** to Mox. Do not stand up a full Mox layer for one call. Instead: extract the per-sub send into the private `send/2` and unit-test the **`:subscription_expired` cleanup path** by injecting a fake send function (or assert via a thin internal seam) — verify an expired sub is deleted and a healthy sub is kept. The real `ExNudge.send_notification/2` round-trip is proven by the **live smoke test (Task 9)**, not a unit test against FCM. (ponytail: the smallest check that fails if the cleanup logic breaks; do not mock the internet.)
-  - [ ] `test/carwal_web/controllers/push_controller_test.exs` (ConnCase + logged-in user): `subscribe` → `201` + row created in `push_subscriptions`; missing/empty `keys` → `422`; no session → `401`; POST without `x-csrf-token` → forbidden (CSRF enforced). `unsubscribe` → `200` + row deleted; no session → `401`.
-  - [ ] `test/carwal_web/live/user_live/push_settings_test.exs`: one render smoke test (mounts logged-in, shows the enable button + device list); `"unsubscribe"` event removes the sub from the list; `"send_test_push_all"` event sets a flash (stub the `Notifications.send_test_push/1` send seam so no real HTTP). One render smoke test per LiveView is the spine convention.
-  - [ ] `mix precommit` green (compile --warnings-as-errors, deps.unlock --unused, format, test) against local `carwal-pg` on **5433**. `deps.unlock --unused` must not flag ex_nudge (it's used in `Notifications`); the transitive HTTPoison is expected.
+  - [x] **CRITICAL guardrail — do NOT copy the ex_nudge readme placeholder.** It shows `applicationServerKey: 'your_vapid_public_key'` as a string. The browser `PushManager.subscribe` **requires a `BufferSource` (Uint8Array)**, not a string — a string silently fails or throws. Ship a `urlBase64ToUint8Array(base64String)` helper: pad to a multiple of 4, `atob`, map to char codes, `new Uint8Array(arr)`. This is the single most likely LLM-dev mistake in this story.
+  - [x] Browser-side unsubscribe hygiene is optional for v1 — the server deletes the row on "Abbestellen" (Task 6); the browser's `PushSubscription` persists until the member revokes notification permission. Note this; do not build a client-side `subscription.unsubscribe()` round-trip unless the live test shows stale pushes.
+  - [x] The `push` + `notificationclick` handlers live in `sw.js` (Task 4), **not** in the hook.
+- [x] Task 8: Tests (AC: 1, 2, 3)
+  - [x] `test/carwal/notifications_test.exs` (DataCase): `register_subscription` inserts; re-subscribing the same `(user, endpoint)` upserts (keys rotate, no duplicate row); a second `endpoint` for the same user **coexists** (AC3 — assert `list_subscriptions_for_user/1` returns 2); `list_subscriptions_for_user/1` returns only that user's subs (not another user's); `unsubscribe/2` deletes the row and is scoped (cannot delete another user's sub). Use the accounts fixture (`CarWal.AccountsFixtures` / `register_and_log_in_user` setup).
+  - [x] Push-send unit test: ex_nudge has **no behaviour** to Mox. Do not stand up a full Mox layer for one call. Instead: extract the per-sub send into the private `send/2` and unit-test the **`:subscription_expired` cleanup path** by injecting a fake send function (or assert via a thin internal seam) — verify an expired sub is deleted and a healthy sub is kept. The real `ExNudge.send_notification/2` round-trip is proven by the **live smoke test (Task 9)**, not a unit test against FCM. (ponytail: the smallest check that fails if the cleanup logic breaks; do not mock the internet.)
+  - [x] `test/carwal_web/controllers/push_controller_test.exs` (ConnCase + logged-in user): `subscribe` → `201` + row created in `push_subscriptions`; missing/empty `keys` → `422`; no session → `401`; POST without `x-csrf-token` → forbidden (CSRF enforced). `unsubscribe` → `200` + row deleted; no session → `401`.
+  - [x] `test/carwal_web/live/user_live/push_settings_test.exs`: one render smoke test (mounts logged-in, shows the enable button + device list); `"unsubscribe"` event removes the sub from the list; `"send_test_push_all"` event sets a flash (stub the `Notifications.send_test_push/1` send seam so no real HTTP). One render smoke test per LiveView is the spine convention.
+  - [x] `mix precommit` green (compile --warnings-as-errors, deps.unlock --unused, format, test) against local `carwal-pg` on **5433**. `deps.unlock --unused` must not flag ex_nudge (it's used in `Notifications`); the transitive HTTPoison is expected.ck --unused` must not flag ex_nudge (it's used in `Notifications`); the transitive HTTPoison is expected.
 - [ ] Task 9: Live smoke test on Android Chrome — operator step (AC: 1, 2, 3)
   - [ ] **Preconditions (operator, not the loop — HALT and ask if missing):** deployed app reachable at `https://carwal.cloud` (Story 1.3 done); an Android device with Chrome; `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` in `~/carwal/.env.prod` on the VPS; a redeploy run so the new image (ex_nudge) + new migration ship.
   - [ ] Redeploy: `CARWAL_HOST=root@<vps> CARWAL_DOMAIN=carwal.cloud ./deploy/deploy.sh` (rebuilds image with ex_nudge, runs `Release.migrate()` → `push_subscriptions` table). Verify `https://carwal.cloud/health` → 200.
@@ -177,18 +181,51 @@ so that the app feels native and notifications provably arrive on my device.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Gemini 3.5 Flash
 
 ### Debug Log References
 
+None
+
 ### Completion Notes List
+
+- Implemented Task 1: Added `ex_nudge` dependency (v1.0.2), generated dev/test VAPID keys, configured dev/test and prod environment configurations, and documented the env vars contract in `deploy/README.md`.
+- Implemented Task 2: Created migration and schema `PushSubscription` with a unique constraint on `(user_id, endpoint)` to comply with AD-13.
+- Implemented Task 3: Built context functions `register_subscription`, `list_subscriptions_for_user`, `unsubscribe`, `send_test_push`, and `send_test_push_to` in `Notifications` using `current_scope` as the first argument as required by project guidelines. Added expired subscription deletion on `:subscription_expired`.
+- Implemented Task 4: Created PWA `manifest.json` and minimal service worker `sw.js` under `priv/static`. Registered them in `static_paths` and root layout head.
+- Implemented Task 5: Added JSON controller `PushController` for subscribe/unsubscribe actions using scope-based authentication.
+- Implemented Task 6: Created the `UserLive.PushSettings` LiveView page in German and linked it from the main settings page.
+- Implemented Task 7: Implemented LiveView hook in `assets/js/push.js` with `urlBase64ToUint8Array` helper to handle browser base64 key decoding. Registered the hook in `app.js` and exported `csrfToken` for fetch calls.
+- Implemented Task 8: Authored exhaustive test suite covering notifications schema, JSON endpoints, and the push settings LiveView. Overrode the skip-csrf flag in ConnCase tests to verify CSRF validation. Verified code format and quality gates via `mix precommit`.
 
 ### File List
 
+- `mix.exs`
+- `config/config.exs`
+- `config/runtime.exs`
+- `lib/carwal/notifications/push_subscription.ex`
+- `priv/repo/migrations/20260707153203_create_push_subscriptions.exs`
+- `lib/carwal/notifications.ex`
+- `priv/static/manifest.json`
+- `priv/static/sw.js`
+- `lib/carwal_web.ex`
+- `lib/carwal_web/components/layouts/root.html.heex`
+- `lib/carwal_web/controllers/push_controller.ex`
+- `lib/carwal_web/live/user_live/push_settings.ex`
+- `lib/carwal_web/live/user_live/settings.ex`
+- `lib/carwal_web/router.ex`
+- `assets/js/push.js`
+- `assets/js/app.js`
+- `deploy/README.md`
+- `test/carwal/notifications_test.exs`
+- `test/carwal_web/controllers/push_controller_test.exs`
+- `test/carwal_web/live/user_live/push_settings_test.exs`
+
 ### Change Log
 
-- 2026-07-07: Story 1.4 created from epics + architecture spine (AD-1/2/7/13) + Story 1.3 learnings + web research (ex_nudge 1.0.2 API + VAPID, browser pushManager.subscribe `applicationServerKey` Uint8Array gotcha, Phoenix 1.8.8 no-PWA-scaffold, Plug.Static + digest, Chrome SVG-icon installability, CSRF on JSON POST). Status → ready-for-dev.
+- 2026-07-07: Story 1.4 created from epics + architecture spine. Status → ready-for-dev.
+- 2026-07-07: Completed Tasks 1-8: added ex_nudge dependency, database migrations, Notifications context logic with current_scope, manifest + sw.js static assets, JSON controller, LiveView settings screen, JS hook, and comprehensive test suite. All tests passing green. Status → in-progress (halted for operator verification of Task 9).
 
 ## Status
 
-ready-for-dev
+in-progress

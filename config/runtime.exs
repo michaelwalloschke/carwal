@@ -212,4 +212,26 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Req
   #
   # See https://swoosh.hexdocs.pm/Swoosh.html#module-installation for details.
+
+  # Web Push production configuration
+  vapid_public_key =
+    read_env.("VAPID_PUBLIC_KEY", nil) ||
+      raise "environment variable VAPID_PUBLIC_KEY is missing."
+
+  vapid_private_key =
+    read_env.("VAPID_PRIVATE_KEY", nil) ||
+      raise "environment variable VAPID_PRIVATE_KEY is missing."
+
+  smtp_user = read_env.("SMTP_USERNAME", nil)
+  mail_from_email = read_env.("MAIL_FROM", smtp_user)
+  vapid_subject_default = if mail_from_email, do: "mailto:#{mail_from_email}", else: nil
+
+  vapid_subject =
+    read_env.("VAPID_SUBJECT", vapid_subject_default) ||
+      raise "VAPID_SUBJECT is missing and cannot be derived (no SMTP_USERNAME or MAIL_FROM)."
+
+  config :ex_nudge,
+    vapid_subject: vapid_subject,
+    vapid_public_key: vapid_public_key,
+    vapid_private_key: vapid_private_key
 end

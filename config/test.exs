@@ -41,3 +41,6 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# Mock Web Push client for tests to avoid making real network requests
+config :carwal, :web_push_client, fn _sub, _payload -> {:ok, %{status_code: 201}} end
