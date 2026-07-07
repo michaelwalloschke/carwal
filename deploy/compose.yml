@@ -1,0 +1,41 @@
+services:
+  app:
+    image: carwal:latest
+    env_file:
+      - .env.prod
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:18
+    env_file:
+      - .env.prod
+    environment:
+      POSTGRES_USER: carwal
+      POSTGRES_DB: carwal
+      # POSTGRES_PASSWORD is read from .env.prod
+    volumes:
+      - pgdata:/var/lib/postgresql
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./caddy:/etc/caddy
+    environment:
+      - CARWAL_DOMAIN
+    restart: unless-stopped
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

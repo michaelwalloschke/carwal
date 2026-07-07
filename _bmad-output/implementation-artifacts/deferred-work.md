@@ -38,3 +38,9 @@ Items deferred from code reviews and other workflows. Each entry: where it came 
 
 - No UI path to the login page for a logged-out user [`lib/carwal_web/router.ex:23`] — `/` is the starter promo without `Layouts.app` (no nav shell, no Anmelden link); every other route requires auth, so login is reachable only by typing `/users/log-in`. Already documented in the 1.2 Completion Notes. → Epic 2 (agenda LiveView replaces `/`).
 - Login timing oracle [`lib/carwal_web/live/user_live/login.ex:72`] — seeded email = token insert + synchronous SMTP send before the flash renders; unseeded returns immediately. Response bytes identical (AC2 satisfied), response time discloses seeded addresses. Operator decision: accept for the household threat model (attacker only learns an email belongs to a family member). Fix would be async delivery via Task.Supervisor. → Revisit if the threat model changes (e.g. app opened beyond the family).
+
+## Deferred from: code review of story 1.3 (2026-07-07)
+
+- source_spec: `_bmad-output/implementation-artifacts/1-3-deploy-to-the-vps-over-https.md`
+  summary: Print Docker compose logs on health check timeout in deploy.sh.
+  evidence: If the container crashes on boot during deploy, the deploy script hangs for 120 seconds and then exits with timeout, without showing the crash traceback or logs of the failed container.

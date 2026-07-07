@@ -18,6 +18,10 @@ defmodule CarWalWeb.Router do
   end
 
   scope "/", CarWalWeb do
+    get "/health", HealthController, :show
+  end
+
+  scope "/", CarWalWeb do
     pipe_through :browser
 
     get "/", PageController, :home
