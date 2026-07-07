@@ -21,7 +21,7 @@ documentsIncluded:
 | PRD Addendum | `prds/prd-carwal-2026-07-05/addendum.md` | Found (counted as part of PRD) |
 | Architecture | `architecture/architecture-carwal-2026-07-05/ARCHITECTURE-SPINE.md` | Found (binding per CLAUDE.md) |
 | Epics & Stories | `epics.md` | Found (whole document) |
-| UX Design | — | Intentionally omitted (documented decision; internal 5-person family PWA) |
+| UX Design | — | Intentionally omitted (documented decision; internal 4-person family PWA) |
 
 **Duplicates:** none.
 **Working artifacts excluded:** `reconcile-draft.md`, `review-rubric.md`, `reviews/`, `.memlog.md` files.
@@ -39,7 +39,7 @@ documentsIncluded:
 - **FR7 — Chat with media.** One family room, no 1:1 threads. Real-time chat, persisted history; images and voice notes over HTTP. [ASSUMPTION] indefinite retention; ~25 MB/file cap; media = images + voice notes.
 - **FR8 — On-demand live location.** Time-boxed share initiated by the person being located; others see live position on map; auto-expires; nothing persisted. First-class "Where are you?" request pushes target; duration presets 15/30/60 min (default 15). No always-on.
 - **FR9 — AI idea-suggestions.** On demand + [ASSUMPTION] proactively at most once per upcoming family-created occasion event (birthdays from member seed config as yearly recurring events). German ideas; proposals accepted/dismissed; default `owner_only`, family-visible on accept; only event title + type leaves the system. Provider swappable.
-- **FR10 — Passwordless auth.** Magic-link via email (German sovereign mailbox); any reachable address; sessions ~1 year; operator does first logins hands-on; invite-by-hand for 5 people.
+- **FR10 — Passwordless auth.** Magic-link via email (German sovereign mailbox); any reachable address; sessions ~1 year; operator does first logins hands-on; invite-by-hand for the 3 login-capable members.
 - **FR11 — Installable PWA.** HTTPS, home-screen install, push on Android. One web client for all devices.
 - **FR12 — Automated backup.** Family data incl. media automatically backed up off-box, encrypted; restore procedure scripted and tested once.
 - **FR13 — Morning digest.** 07:00 push to both adults with today's events (school + family); no push on empty day. Complements new-entry push.
@@ -68,7 +68,7 @@ Total NFRs: 5
 
 ### PRD Completeness Assessment
 
-PRD is complete and unusually crisp: 13 numbered FRs each with testable behavior, 5 NFRs, explicit non-goals, phasing proposal, success + counter-metrics, marked assumptions ([ASSUMPTION] tags), and a rationale record for right-sizing decisions. Two open stakeholder questions, one blocking (feed handles) but trivially resolvable. UX document intentionally omitted (internal 5-person app). No gaps that block epic coverage validation.
+PRD is complete and unusually crisp: 13 numbered FRs each with testable behavior, 5 NFRs, explicit non-goals, phasing proposal, success + counter-metrics, marked assumptions ([ASSUMPTION] tags), and a rationale record for right-sizing decisions. Two open stakeholder questions, one blocking (feed handles) but trivially resolvable. UX document intentionally omitted (internal 4-person app). No gaps that block epic coverage validation.
 
 ## Epic Coverage Validation
 
@@ -126,7 +126,7 @@ None. The UX-relevant decisions present in PRD and epics are mutually consistent
 
 ### Warnings
 
-- ⚠️ **LOW:** No visual design contract — acceptable for a 5-person internal app with a non-technical primary user, but the primary user's tolerance is the real acceptance test. Risk is rework on the agenda/chat screens, not missed requirements. Mitigation already named in epics (later bmad-ux run if needed).
+- ⚠️ **LOW:** No visual design contract — acceptable for a 4-person internal app with a non-technical primary user, but the primary user's tolerance is the real acceptance test. Risk is rework on the agenda/chat screens, not missed requirements. Mitigation already named in epics (later bmad-ux run if needed).
 
 ## Epic Quality Review
 

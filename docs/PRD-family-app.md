@@ -20,7 +20,7 @@ The two daughters' schools each use a separate, walled-garden school app (calend
 
 ## 3. Non-Goals (v1)
 
-- **Not a product.** No public sign-up, app-store distribution, multi-tenancy, or billing. Invite-by-hand for 5 people.
+- **Not a product.** No public sign-up, app-store distribution, multi-tenancy, or billing. Invite-by-hand for the 3 login-capable household members.
 - **Not a school-app replacement.** We aggregate/notify; the source apps remain the system of record. Full message *bodies* from closed apps are out — we surface the notification, deep-link to the app for detail.
 - **No live Instagram/Pinterest ingestion.** Infeasible via legitimate, sovereignty-respecting channels (see §7.4). We suggest from the model's own knowledge and *link out* to Pinterest/IG searches instead.
 - **No stored location history.** Ephemeral live-share only. A queryable track of two minors is a liability, not a feature.

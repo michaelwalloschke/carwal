@@ -68,6 +68,56 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  # Sovereign mailbox SMTP (NFR1: German provider only, never US SaaS like
+  # Mailgun/SES/SendGrid). Guarded so a missing prod mailer config is a
+  # controlled failure, not a silent drop (closes the 1.1-deferred "prod mailer
+  # has no real adapter"). STARTTLS on 587: ssl:false, tls::always. For implicit
+  # SSL on 465 use ssl:true, tls::never.
+  if smtp_user = System.get_env("SMTP_USERNAME") do
+    smtp_pass =
+      System.get_env("SMTP_PASSWORD") ||
+        raise "SMTP_USERNAME is set but SMTP_PASSWORD is missing"
+
+    config :carwal, CarWal.Mailer,
+      adapter: Swoosh.Adapters.SMTP,
+      relay: System.get_env("SMTP_HOST", "smtp.mailbox.org"),
+      port: String.to_integer(System.get_env("SMTP_PORT", "587")),
+      username: smtp_user,
+      password: smtp_pass,
+      auth: :always,
+      ssl: false,
+      tls: :always,
+      retries: 2,
+      no_mx_lookups: false
+
+    # mailbox.org/Posteo reject senders not owned by the account.
+    config :carwal, :mail_from, {"CarWal", System.get_env("MAIL_FROM", smtp_user)}
+  else
+    raise """
+    SMTP_USERNAME is missing. CarWal delivers magic-link mail through a sovereign
+    mailbox (mailbox.org/Posteo). Set SMTP_USERNAME and SMTP_PASSWORD (optionally
+    SMTP_HOST, SMTP_PORT, MAIL_FROM) before deploying.
+    """
+  end
+
+  # Real family members — PII via env, never committed. Missing emails surface
+  # as a controlled failure in priv/repo/seeds.exs (which refuses nil/placeholder
+  # addresses in :prod).
+  config :carwal, :family_members, [
+    %{
+      name: System.get_env("FAMILY_OPERATOR_NAME", "Operator"),
+      email: System.get_env("FAMILY_OPERATOR_EMAIL")
+    },
+    %{
+      name: System.get_env("FAMILY_MOTHER_NAME", "Mutter"),
+      email: System.get_env("FAMILY_MOTHER_EMAIL")
+    },
+    %{
+      name: System.get_env("FAMILY_DAUGHTER_NAME", "Tochter"),
+      email: System.get_env("FAMILY_DAUGHTER_EMAIL")
+    }
+  ]
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key

@@ -7,6 +7,19 @@
 # General application configuration
 import Config
 
+config :carwal, :scopes,
+  user: [
+    default: true,
+    module: CarWal.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:user, :id],
+    schema_key: :user_id,
+    schema_type: :id,
+    schema_table: :users,
+    test_data_fixture: CarWal.AccountsFixtures,
+    test_setup_helper: :register_and_log_in_user
+  ]
+
 config :carwal,
   namespace: CarWal,
   ecto_repos: [CarWal.Repo],
@@ -45,6 +58,17 @@ config :phoenix_live_view,
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
 config :carwal, CarWal.Mailer, adapter: Swoosh.Adapters.Local
+
+# The three login-capable family members (operator, mother, 15yo daughter).
+# Placeholders only — real names/emails are injected in config/runtime.exs from
+# env vars at deploy (PII stays out of git). The 9yo daughter has no mailbox and
+# is NOT a login user. `priv/repo/seeds.exs` reads this list and refuses to seed
+# these `@carwal.local` placeholders in :prod.
+config :carwal, :family_members, [
+  %{name: "Operator", email: "operator@carwal.local"},
+  %{name: "Mutter", email: "mutter@carwal.local"},
+  %{name: "Tochter", email: "tochter@carwal.local"}
+]
 
 # Configure esbuild (the version is required)
 config :esbuild,
