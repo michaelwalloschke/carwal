@@ -1,11 +1,13 @@
 import Config
 
-# config/runtime.exs is executed for all environments, including
-# during releases. It is executed after compilation and before the
-# system starts, so it is typically used to load production configuration
-# and secrets from environment variables or elsewhere. Do not define
-# any compile-time configuration in here, as it won't be applied.
-# The block below contains prod specific runtime configuration.
+# Helper to read env variables, trimming whitespaces and treating empty strings as nil.
+# Optionally takes a default value fallback.
+read_env = fn name, default ->
+  case String.trim(System.get_env(name, "")) do
+    "" -> default
+    value -> value
+  end
+end
 
 # ## Using releases
 #
@@ -20,25 +22,41 @@ if System.get_env("PHX_SERVER") do
   config :carwal, CarWalWeb.Endpoint, server: true
 end
 
-config :carwal, CarWalWeb.Endpoint,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+if config_env() != :test do
+  port_raw = read_env.("PORT", "4000")
+
+  port =
+    case Integer.parse(port_raw) do
+      {p, ""} when p >= 1 and p <= 65535 -> p
+      _ -> raise "PORT must be an integer in 1..65535, got: #{inspect(port_raw)}"
+    end
+
+  config :carwal, CarWalWeb.Endpoint, http: [port: port]
+end
 
 if config_env() == :prod do
   database_url =
-    System.get_env("DATABASE_URL") ||
+    read_env.("DATABASE_URL", nil) ||
       raise """
       environment variable DATABASE_URL is missing.
       For example: ecto://USER:PASS@HOST/DATABASE
       """
 
+  # ECTO_IPV6 requires IPv6 reachability of the DB host (leave unset in .env.prod if using Compose service names)
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+
+  pool_size_raw = read_env.("POOL_SIZE", "10")
+
+  pool_size =
+    case Integer.parse(pool_size_raw) do
+      {size, ""} when size >= 1 -> size
+      _ -> raise "POOL_SIZE must be a positive integer, got: #{inspect(pool_size_raw)}"
+    end
 
   config :carwal, CarWal.Repo,
     # ssl: true,
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    # For machines with several cores, consider starting multiple pools of `pool_size`
-    # pool_count: 4,
+    pool_size: pool_size,
     socket_options: maybe_ipv6
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
@@ -47,18 +65,24 @@ if config_env() == :prod do
   # to check this value into version control, so we use an environment
   # variable instead.
   secret_key_base =
-    System.get_env("SECRET_KEY_BASE") ||
+    read_env.("SECRET_KEY_BASE", nil) ||
       raise """
       environment variable SECRET_KEY_BASE is missing.
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host =
+    read_env.("PHX_HOST", nil) ||
+      raise """
+      environment variable PHX_HOST is missing.
+      For example: family.carwal.de or carwal.local
+      """
 
   config :carwal, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :carwal, CarWalWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
+    check_origin: ["https://#{host}"],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
@@ -74,40 +98,45 @@ if config_env() == :prod do
   # has no real adapter"). STARTTLS on 587: ssl:false, tls::always. For implicit
   # SSL on 465 use ssl:true, tls::never.
   # Set-but-empty env vars (SMTP_USERNAME=) must fail like missing ones.
-  read_env = fn name ->
-    case String.trim(System.get_env(name, "")) do
-      "" -> nil
-      value -> value
-    end
-  end
-
-  if smtp_user = read_env.("SMTP_USERNAME") do
+  if smtp_user = read_env.("SMTP_USERNAME", nil) do
     smtp_pass =
-      read_env.("SMTP_PASSWORD") ||
+      read_env.("SMTP_PASSWORD", nil) ||
         raise "SMTP_USERNAME is set but SMTP_PASSWORD is missing (or empty)"
 
-    smtp_port_raw = read_env.("SMTP_PORT") || "587"
+    smtp_port_raw = read_env.("SMTP_PORT", "587")
 
     smtp_port =
       case Integer.parse(smtp_port_raw) do
-        {port, ""} -> port
-        _ -> raise "SMTP_PORT must be an integer, got: #{inspect(smtp_port_raw)}"
+        {port, ""} when port >= 1 and port <= 65535 -> port
+        _ -> raise "SMTP_PORT must be an integer in 1..65535, got: #{inspect(smtp_port_raw)}"
       end
+
+    smtp_host = read_env.("SMTP_HOST", "smtp.mailbox.org")
 
     config :carwal, CarWal.Mailer,
       adapter: Swoosh.Adapters.SMTP,
-      relay: read_env.("SMTP_HOST") || "smtp.mailbox.org",
+      relay: smtp_host,
       port: smtp_port,
       username: smtp_user,
       password: smtp_pass,
       auth: :always,
       ssl: false,
       tls: :always,
+      tls_options: [
+        verify: :verify_peer,
+        cacerts: :public_key.cacerts_get(),
+        server_name_indication: String.to_charlist(smtp_host),
+        depth: 3
+      ],
       retries: 2,
-      no_mx_lookups: false
+      # Submission relay (posteo.de:587 with auth + STARTTLS), not MTA-to-MTA
+      # delivery. no_mx_lookups: true connects directly to the relay host; false
+      # would MX-resolve it (e.g. posteo.de -> mx04.posteo.de inbound MX) and
+      # time out, since submission is not accepted on the MX hosts.
+      no_mx_lookups: true
 
     # mailbox.org/Posteo reject senders not owned by the account.
-    config :carwal, :mail_from, {"CarWal", read_env.("MAIL_FROM") || smtp_user}
+    config :carwal, :mail_from, {"CarWal", read_env.("MAIL_FROM", smtp_user)}
   else
     raise """
     SMTP_USERNAME is missing. CarWal delivers magic-link mail through a sovereign

@@ -17,6 +17,16 @@ defmodule CarWalWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :health do
+    plug :accepts, ["text", "html", "json"]
+  end
+
+  scope "/", CarWalWeb do
+    pipe_through :health
+
+    get "/health", HealthController, :show
+  end
+
   scope "/", CarWalWeb do
     pipe_through :browser
 

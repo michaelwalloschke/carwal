@@ -38,3 +38,35 @@ Items deferred from code reviews and other workflows. Each entry: where it came 
 
 - No UI path to the login page for a logged-out user [`lib/carwal_web/router.ex:23`] — `/` is the starter promo without `Layouts.app` (no nav shell, no Anmelden link); every other route requires auth, so login is reachable only by typing `/users/log-in`. Already documented in the 1.2 Completion Notes. → Epic 2 (agenda LiveView replaces `/`).
 - Login timing oracle [`lib/carwal_web/live/user_live/login.ex:72`] — seeded email = token insert + synchronous SMTP send before the flash renders; unseeded returns immediately. Response bytes identical (AC2 satisfied), response time discloses seeded addresses. Operator decision: accept for the household threat model (attacker only learns an email belongs to a family member). Fix would be async delivery via Task.Supervisor. → Revisit if the threat model changes (e.g. app opened beyond the family).
+
+## Deferred from: code review of story 1.3 (2026-07-07)
+
+- source_spec: `_bmad-output/implementation-artifacts/1-3-deploy-to-the-vps-over-https.md`
+  summary: Print Docker compose logs on health check timeout in deploy.sh.
+  evidence: If the container crashes on boot during deploy, the deploy script hangs for 120 seconds and then exits with timeout, without showing the crash traceback or logs of the failed container.
+
+## Deferred from: code review of 1-3-deploy-to-the-vps-over-https.md (2026-07-07)
+
+- **Health check check DNS Latency risk**: Polling `https://$CARWAL_DOMAIN/health` from the local machine is susceptible to DNS latency, which can cause the script to report a failed deployment even if the server is healthy.
+
+## Deferred from: PR #12 `/review` pass 2 of story 1.3 (2026-07-07)
+
+- `postgres:18` not pinned to minor/patch [`deploy/compose.yml`] — spec permits `:18`; floats within 18.x. Caddy pinned to `2.9-alpine` already. Pin `postgres:18.x` for reproducibility when a maintenance pass touches deploy. Low.
+- `:health` pipeline accepts `["text","html","json"]` [`lib/carwal_web/router.ex:21`] — spec wanted minimal `:accepts`; "html" harmless for a probe (browser GET returns `ok` text). Narrow to `["json"]` on a cleanup pass. Nit.
+- `HealthController` sets no `Content-Type` [`lib/carwal_web/controllers/health_controller.ex:7`] — `send_resp(conn, 200, "ok")` leaves default; probes don't care. Optional: `put_resp_content_type(conn, "text/plain")`. Nit.
+
+## Deferred from: code review of story 1.3 — Pass 3 (`/bmad-code-review`, 2026-07-07)
+
+- source_spec: `_bmad-output/implementation-artifacts/1-3-deploy-to-the-vps-over-https.md`
+- db `env_file: .env.prod` injects app secrets + family PII into the postgres container env [`deploy/compose.yml:13-14`] — postgres only needs `POSTGRES_PASSWORD`; narrow on a secrets-hardening pass (requires choosing where the password lives: separate `db.env` vs interpolation from `~/carwal/.env`). Low (household threat model — operator already holds `.env.prod`).
+- caddy `depends_on: app` short-form + `app` has no healthcheck [`deploy/compose.yml:42-43`] — Caddy 502s for the seconds BEAM takes to bind on restart. Add an app healthcheck + `condition: service_healthy` (needs choosing the mechanism — curl is not in the runner image). Low.
+- `:health` pipeline `:accepts, ["text","html","json"]` 406s on strict `Accept` headers [`lib/carwal_web/router.ex:20-22`] — external monitors with `Accept: application/xml` see 406; deploy.sh curl sends `*/*` and passes. Already deferred as nit (Pass 2).
+- `force_ssl` `exclude: paths: ["/health"]` is dead config [`config/prod.exs:17`] — deploy.sh polls https through Caddy (`x_forwarded_proto: https`, no redirect) and the app port is never published, so no plain-HTTP probe reaches the endpoint. Spec-required; keep, becomes live if a plain-HTTP LB probe is added. Low.
+- `docker save | ssh docker load` ships an uncompressed ~200-400 MB image [`deploy/deploy.sh:17`] — gzip pipe (`docker save | gzip | ssh "gunzip | docker load"`) if ship time becomes painful; QEMU build dominates today. Low (perf).
+- `no_mx_lookups: true` hardcoded, not tied to `SMTP_PORT` [`config/runtime.exs:136`] — correct for submission relays (587/465) but a future provider reached via MX would time out with the same symptom the fix prevented. Comment already documents the submission-relay assumption. Low (info).
+- No SSH `ConnectTimeout`/`ServerAliveInterval` in deploy.sh [`deploy/deploy.sh`] — first-run host-key prompt blocks non-interactive/CI use; flaky network can hang the `docker save | ssh` pipe. Add `-o ConnectTimeout=10 -o ServerAliveInterval=15 -o StrictHostKeyChecking=accept-new` if deploy.sh moves to CI. Low.
+- `docker save | ssh docker load` has no timeout [`deploy/deploy.sh:17`] — SSH drop mid-load can leave a partial image tagged `carwal:latest` → next `compose up` boots a corrupt image. Retag-on-success pattern (load to temp tag, tag latest only on full success). Low.
+- Migration failure leaves `db` running → partial deploy state [`deploy/deploy.sh:30-33`] — running db, no app/caddy; a re-run's `--wait db` sees db healthy but migrations still broken. `trap '... compose down' ERR` or a README recovery note. Low.
+- `POSTGRES_PASSWORD`/`DATABASE_URL` password mismatch not detected at db healthcheck [`deploy/compose.yml:22`] — `pg_isready -U carwal` uses peer auth, passes regardless of password; mismatch surfaces at migrate (auth failed, loud). Optional: `PGPASSWORD=$POSTGRES_PASSWORD psql -U carwal -d carwal -c 'select 1'` healthcheck. Low.
+- Caddy LE rate-limit risk if DNS not pointed at the VPS on first deploy [`deploy/caddy/Caddyfile`] — `restart: unless-stopped` + ACME retries can hit the LE `new-order` limit (5/hour). README already lists DNS as a precondition; Caddy backs off. Low.
+- Caddyfile `{$CARWAL_DOMAIN}` empty on manual `docker compose up` if `~/carwal/.env` is deleted [`deploy/caddy/Caddyfile:1`] — Caddy crash-loops with an unhelpful parse error. `{$CARWAL_DOMAIN:localhost}` env-default or a compose `.env` guard; README says do not delete `~/carwal/.env`. Low.
