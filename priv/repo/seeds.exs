@@ -23,8 +23,11 @@ end
 adapter = Application.get_env(:carwal, CarWal.Mailer)[:adapter]
 real_mail? = adapter not in [Swoosh.Adapters.Local, Swoosh.Adapters.Test]
 
+# nil and "" both count: a set-but-empty FAMILY_*_EMAIL env var must trip the
+# prod guard below, not slip through and crash register_user mid-list.
 placeholder? = fn
   nil -> true
+  "" -> true
   email -> String.ends_with?(email, "@carwal.local")
 end
 
@@ -37,7 +40,7 @@ if real_mail? and Enum.any?(members, &placeholder?.(&1.email)) do
   """
 end
 
-for %{email: email} <- members, not is_nil(email) do
+for %{email: email} <- members, email not in [nil, ""] do
   case Accounts.get_user_by_email(email) do
     nil ->
       {:ok, _user} = Accounts.register_user(%{email: email})

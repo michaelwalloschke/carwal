@@ -25,7 +25,7 @@ FR6: Reminders via push — an entry with remind_at fires a push at the set time
 FR7: Chat with media — one family room, real-time, persisted history (indefinite retention); images + voice notes upload over HTTP, ~25 MB/file cap.
 FR8: On-demand live location — "Where are you?" request pushes the target; target starts a time-boxed share (15/30/60 min preset, default 15); others see live position on a map; auto-expires; nothing persisted.
 FR9: AI idea-suggestions — on demand plus proactively at most once per upcoming occasion event (birthdays from member seed as yearly recurring entries); German output; minimal context (title + type) leaves the system; proposals default owner_only, accept → family-visible; provider swappable.
-FR10: Passwordless auth — magic-link login via email through the German sovereign mailbox; any reachable address works (IServ school addresses suffice); ~1-year sessions; operator performs first login at onboarding; invite-by-hand for the 3 login-capable members (the 9-year-old daughter is tracked but has no login).
+FR10: Passwordless auth — magic-link login via email through the German sovereign mailbox; any reachable address works (IServ school addresses suffice); effectively-never-expiring sessions (~10 years, widened from ~1 year per operator in Story 1.2); operator performs first login at onboarding; invite-by-hand for the 3 login-capable members (the 9-year-old daughter is tracked but has no login).
 FR11: Installable PWA — HTTPS-only, installs to home screen, push works on Android; one web client for all devices.
 FR12: Automated backup — family data including media automatically backed up off-box, encrypted; restore procedure scripted and tested once.
 FR13: Morning digest — 07:00 push to both adults listing today's events (school + family); skipped on empty days; complements the new-entry push.
@@ -132,7 +132,7 @@ So that I never need a password and stay logged in long-term.
 **Given** a member seeded in the database (no public sign-up path exists),
 **When** they enter their email address on the login page,
 **Then** a German-language magic-link email is sent via Swoosh SMTP through the sovereign mailbox
-**And** clicking the link creates a session valid for ~1 year.
+**And** clicking the link creates a long-lived session (effectively never expires — ~10 years, widened from ~1 year per operator in Story 1.2).
 
 **Given** an email address that is not seeded,
 **When** it is submitted on the login page,

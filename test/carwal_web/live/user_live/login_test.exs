@@ -32,6 +32,26 @@ defmodule CarWalWeb.UserLive.LoginTest do
                "login"
     end
 
+    test "throttles repeated requests while a link is still valid", %{conn: conn} do
+      user = user_fixture()
+
+      {:ok, lv, _html} = live(conn, ~p"/users/log-in")
+      form(lv, "#login_form_magic", user: %{email: user.email}) |> render_submit()
+
+      {:ok, lv, _html} = live(conn, ~p"/users/log-in")
+
+      {:ok, _lv, html} =
+        form(lv, "#login_form_magic", user: %{email: user.email})
+        |> render_submit()
+        |> follow_redirect(conn, ~p"/users/log-in")
+
+      # identical flash, but no second token/mail while the first link lives
+      assert html =~ "Wenn deine E-Mail-Adresse hinterlegt ist"
+
+      assert [_only_one] =
+               CarWal.Repo.all_by(CarWal.Accounts.UserToken, user_id: user.id, context: "login")
+    end
+
     test "does not disclose if user is registered", %{conn: conn} do
       {:ok, lv, _html} = live(conn, ~p"/users/log-in")
 

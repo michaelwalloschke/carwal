@@ -18,6 +18,10 @@ defmodule CarWal.SeedsTest do
     run_seeds()
     assert Repo.aggregate(User, :count) == 3
 
+    configured = for %{email: email} <- Application.get_env(:carwal, :family_members), do: email
+    seeded = Repo.all(User) |> Enum.map(& &1.email)
+    assert Enum.sort(seeded) == Enum.sort(configured)
+
     # Re-running must not duplicate rows or raise.
     run_seeds()
     assert Repo.aggregate(User, :count) == 3

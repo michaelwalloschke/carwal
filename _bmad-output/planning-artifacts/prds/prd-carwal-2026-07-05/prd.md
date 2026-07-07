@@ -58,7 +58,7 @@ CarWal is a **private app for 5 known family members** — not a product. No sig
 
 ### Access
 
-- **FR10 — Passwordless auth.** Magic-link login via email (sent through the German sovereign mailbox); any reachable address works — the daughters' IServ school addresses suffice, since the link is needed rarely. Sessions live ~1 year; the operator performs each member's first login hands-on at onboarding. Invite-by-hand for the 3 login-capable members (operator, mother, 15-year-old daughter); the 9-year-old daughter is tracked but has no login.
+- **FR10 — Passwordless auth.** Magic-link login via email (sent through the German sovereign mailbox); any reachable address works — the daughters' IServ school addresses suffice, since the link is needed rarely. Sessions effectively never expire (~10 years — widened from ~1 year per operator decision in Story 1.2); the operator performs each member's first login hands-on at onboarding. Invite-by-hand for the 3 login-capable members (operator, mother, 15-year-old daughter); the 9-year-old daughter is tracked but has no login.
 - **FR11 — Installable PWA.** Served over HTTPS; installs to the home screen; push works on Android. One web client for all devices.
 
 ### Operations

@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05
-last_updated: 2026-07-06
+last_updated: 2026-07-07
 project: carwal
 project_key: NOKEY
 tracking_system: file-system
@@ -50,8 +50,8 @@ story_location: /Users/michael/development/carwal/_bmad-output/implementation-ar
 development_status:
   epic-1: in-progress
   1-1-app-skeleton-from-phoenix-starter: done
-  1-2-magic-link-login-for-seeded-members: review
-  1-3-deploy-to-the-vps-over-https: backlog
+  1-2-magic-link-login-for-seeded-members: done
+  1-3-deploy-to-the-vps-over-https: ready-for-dev
   1-4-pwa-install-push-foundation: backlog
   1-5-backup-first-restore-rehearsal: backlog
   epic-1-retrospective: optional

@@ -11,6 +11,13 @@ msgstr ""
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+## Custom changeset messages from CarWal.Accounts.User
+msgid "must have the @ sign and no spaces"
+msgstr "muss ein @-Zeichen enthalten und darf keine Leerzeichen enthalten"
+
+msgid "did not change"
+msgstr "wurde nicht geändert"
+
 ## From Ecto.Changeset.cast/4
 msgid "can't be blank"
 msgstr "darf nicht leer sein"

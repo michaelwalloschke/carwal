@@ -24,16 +24,15 @@ defmodule CarWalWeb.UserLive.SettingsTest do
       assert %{"error" => "Bitte melde dich an, um diese Seite zu sehen."} = flash
     end
 
-    test "redirects if user is not in sudo mode", %{conn: conn} do
-      {:ok, conn} =
+    test "stays reachable long after login (no sudo re-prompt, FR10)", %{conn: conn} do
+      {:ok, _lv, html} =
         conn
         |> log_in_user(user_fixture(),
           token_authenticated_at: DateTime.add(DateTime.utc_now(:second), -11, :minute)
         )
         |> live(~p"/users/settings")
-        |> follow_redirect(conn, ~p"/users/log-in")
 
-      assert conn.resp_body =~ "Bitte melde dich erneut an, um diese Seite zu sehen."
+      assert html =~ "E-Mail ändern"
     end
   end
 
@@ -71,7 +70,7 @@ defmodule CarWalWeb.UserLive.SettingsTest do
         })
 
       assert result =~ "E-Mail ändern"
-      assert result =~ "must have the @ sign and no spaces"
+      assert result =~ "muss ein @-Zeichen enthalten und darf keine Leerzeichen enthalten"
     end
 
     test "renders errors with invalid data (phx-submit)", %{conn: conn, user: user} do
@@ -85,7 +84,7 @@ defmodule CarWalWeb.UserLive.SettingsTest do
         |> render_submit()
 
       assert result =~ "E-Mail ändern"
-      assert result =~ "did not change"
+      assert result =~ "wurde nicht geändert"
     end
   end
 

@@ -55,10 +55,7 @@ defmodule CarWalWeb.UserLive.Login do
 
   @impl true
   def mount(_params, _session, socket) do
-    email =
-      Phoenix.Flash.get(socket.assigns.flash, :email) ||
-        get_in(socket.assigns, [:current_scope, Access.key(:user), Access.key(:email)])
-
+    email = get_in(socket.assigns, [:current_scope, Access.key(:user), Access.key(:email)])
     form = to_form(%{"email" => email}, as: "user")
 
     {:ok, assign(socket, form: form)}
@@ -66,15 +63,10 @@ defmodule CarWalWeb.UserLive.Login do
 
   @impl true
   def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket) do
-    # Only seeded members receive a link. The flash below is identical whether
-    # or not the email is seeded, so this discloses nothing (AC2: no user
-    # enumeration). No account is ever created here — there is no sign-up path.
-    if user = Accounts.get_user_by_email(email) do
-      Accounts.deliver_login_instructions(
-        user,
-        &url(~p"/users/log-in/#{&1}")
-      )
-    end
+    # Gate + throttle live in Accounts.request_login_link/2. The flash below is
+    # identical whether or not the email is seeded, so this discloses nothing
+    # (AC2: no user enumeration). No account is ever created — no sign-up path.
+    Accounts.request_login_link(email, &url(~p"/users/log-in/#{&1}"))
 
     info =
       "Wenn deine E-Mail-Adresse hinterlegt ist, erhältst du gleich einen Anmeldelink."

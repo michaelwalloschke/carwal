@@ -258,6 +258,28 @@ defmodule CarWal.AccountsTest do
       # one time use only
       assert {:error, :not_found} = Accounts.login_user_by_magic_link(encoded_token)
     end
+
+    test "rejects a malformed (non-base64url) token instead of raising" do
+      assert {:error, :not_found} = Accounts.login_user_by_magic_link("not base64url!")
+    end
+  end
+
+  describe "request_login_link/2" do
+    test "delivers one link and throttles while it is unexpired" do
+      user = user_fixture()
+      url_fun = &"http://localhost/users/log-in/#{&1}"
+
+      assert :ok = Accounts.request_login_link(user.email, url_fun)
+      assert :ok = Accounts.request_login_link(user.email, url_fun)
+
+      assert [_only_one] =
+               CarWal.Repo.all_by(CarWal.Accounts.UserToken, user_id: user.id, context: "login")
+    end
+
+    test "returns :ok and creates nothing for an unseeded email" do
+      assert :ok = Accounts.request_login_link("nobody@example.com", &"http://x/#{&1}")
+      assert CarWal.Repo.aggregate(CarWal.Accounts.UserToken, :count) == 0
+    end
   end
 
   describe "delete_user_session_token/1" do

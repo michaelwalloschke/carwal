@@ -1,7 +1,11 @@
 defmodule CarWalWeb.UserLive.Settings do
   use CarWalWeb, :live_view
 
-  on_mount {CarWalWeb.UserAuth, :require_sudo_mode}
+  # No sudo gate: FR10 says family members are never re-prompted, and this is
+  # the only authenticated page. Auth comes from the router's
+  # live_session :require_authenticated_user (review decision, 2026-07-07).
+
+  require Logger
 
   alias CarWal.Accounts
 
@@ -49,12 +53,7 @@ defmodule CarWalWeb.UserLive.Settings do
     user = socket.assigns.current_scope.user
     email_changeset = Accounts.change_user_email(user, %{}, validate_unique: false)
 
-    socket =
-      socket
-      |> assign(:current_email, user.email)
-      |> assign(:email_form, to_form(email_changeset))
-
-    {:ok, socket}
+    {:ok, assign(socket, :email_form, to_form(email_changeset))}
   end
 
   @impl true
@@ -73,18 +72,33 @@ defmodule CarWalWeb.UserLive.Settings do
   def handle_event("update_email", params, socket) do
     %{"user" => user_params} = params
     user = socket.assigns.current_scope.user
-    true = Accounts.sudo_mode?(user)
 
     case Accounts.change_user_email(user, user_params) do
       %{valid?: true} = changeset ->
-        Accounts.deliver_user_update_email_instructions(
-          Ecto.Changeset.apply_action!(changeset, :insert),
-          user.email,
-          &url(~p"/users/settings/confirm-email/#{&1}")
-        )
+        deliver_result =
+          Accounts.deliver_user_update_email_instructions(
+            Ecto.Changeset.apply_action!(changeset, :insert),
+            user.email,
+            &url(~p"/users/settings/confirm-email/#{&1}")
+          )
 
-        info = "Ein Bestätigungslink wurde an die neue Adresse gesendet."
-        {:noreply, socket |> put_flash(:info, info)}
+        case deliver_result do
+          {:ok, _mail} ->
+            info = "Ein Bestätigungslink wurde an die neue Adresse gesendet."
+            {:noreply, put_flash(socket, :info, info)}
+
+          {:error, reason} ->
+            Logger.error(
+              "email-change confirmation delivery failed for user #{user.id}: #{inspect(reason)}"
+            )
+
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               "Die Bestätigungs-E-Mail konnte nicht gesendet werden. Bitte versuche es später erneut."
+             )}
+        end
 
       changeset ->
         {:noreply, assign(socket, :email_form, to_form(changeset, action: :insert))}

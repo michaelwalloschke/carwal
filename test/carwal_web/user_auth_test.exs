@@ -207,6 +207,10 @@ defmodule CarWalWeb.UserAuthTest do
       assert %{value: new_signed_token, max_age: max_age} = conn.resp_cookies[@remember_me_cookie]
       assert new_signed_token != signed_token
       assert max_age == @remember_me_cookie_max_age
+
+      # the superseded token is revoked — with ~10-year validity nothing else
+      # would ever expire it, so it must not stay a live credential
+      refute Accounts.get_user_by_session_token(token)
     end
   end
 

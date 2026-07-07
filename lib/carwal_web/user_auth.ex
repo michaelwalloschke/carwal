@@ -94,7 +94,12 @@ defmodule CarWalWeb.UserAuth do
     token_age = DateTime.diff(DateTime.utc_now(:second), token_inserted_at, :day)
 
     if token_age >= @session_reissue_age_in_days do
-      create_or_extend_session(conn, user, %{})
+      old_token = get_session(conn, :user_token)
+      conn = create_or_extend_session(conn, user, %{})
+      # Revoke the superseded token: with ~10-year validity nothing expires it,
+      # so every reissue would otherwise leave a live credential behind.
+      old_token && Accounts.delete_user_session_token(old_token)
+      conn
     else
       conn
     end

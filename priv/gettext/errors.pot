@@ -7,6 +7,14 @@
 ## Run `mix gettext.extract` to bring this file up to
 ## date. Leave `msgstr`s empty as changing them here has no
 ## effect: edit them in PO (`.po`) files instead.
+## Custom changeset messages from CarWal.Accounts.User
+## (dynamic per gettext.extract; kept manually, see header note)
+msgid "must have the @ sign and no spaces"
+msgstr ""
+
+msgid "did not change"
+msgstr ""
+
 ## From Ecto.Changeset.cast/4
 msgid "can't be blank"
 msgstr ""

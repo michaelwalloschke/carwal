@@ -73,15 +73,31 @@ if config_env() == :prod do
   # controlled failure, not a silent drop (closes the 1.1-deferred "prod mailer
   # has no real adapter"). STARTTLS on 587: ssl:false, tls::always. For implicit
   # SSL on 465 use ssl:true, tls::never.
-  if smtp_user = System.get_env("SMTP_USERNAME") do
+  # Set-but-empty env vars (SMTP_USERNAME=) must fail like missing ones.
+  read_env = fn name ->
+    case String.trim(System.get_env(name, "")) do
+      "" -> nil
+      value -> value
+    end
+  end
+
+  if smtp_user = read_env.("SMTP_USERNAME") do
     smtp_pass =
-      System.get_env("SMTP_PASSWORD") ||
-        raise "SMTP_USERNAME is set but SMTP_PASSWORD is missing"
+      read_env.("SMTP_PASSWORD") ||
+        raise "SMTP_USERNAME is set but SMTP_PASSWORD is missing (or empty)"
+
+    smtp_port_raw = read_env.("SMTP_PORT") || "587"
+
+    smtp_port =
+      case Integer.parse(smtp_port_raw) do
+        {port, ""} -> port
+        _ -> raise "SMTP_PORT must be an integer, got: #{inspect(smtp_port_raw)}"
+      end
 
     config :carwal, CarWal.Mailer,
       adapter: Swoosh.Adapters.SMTP,
-      relay: System.get_env("SMTP_HOST", "smtp.mailbox.org"),
-      port: String.to_integer(System.get_env("SMTP_PORT", "587")),
+      relay: read_env.("SMTP_HOST") || "smtp.mailbox.org",
+      port: smtp_port,
       username: smtp_user,
       password: smtp_pass,
       auth: :always,
@@ -91,7 +107,7 @@ if config_env() == :prod do
       no_mx_lookups: false
 
     # mailbox.org/Posteo reject senders not owned by the account.
-    config :carwal, :mail_from, {"CarWal", System.get_env("MAIL_FROM", smtp_user)}
+    config :carwal, :mail_from, {"CarWal", read_env.("MAIL_FROM") || smtp_user}
   else
     raise """
     SMTP_USERNAME is missing. CarWal delivers magic-link mail through a sovereign

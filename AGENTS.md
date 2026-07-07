@@ -55,6 +55,7 @@ custom classes must fully style the input
   - A `live_session :require_authenticated_user` scope - for routes that require authentication, similar to the plug with the same name
   - In both cases, a `@current_scope` is assigned to the Plug connection and LiveView socket
   - A plug `redirect_if_user_is_authenticated` that redirects to a default path in case the user is authenticated - useful for a registration page that should only be shown to unauthenticated users
+  - **CarWal note:** this app is passwordless with **no registration** (FR10). `redirect_if_user_is_authenticated` was not generated and there are no registration or password routes — do **not** re-introduce them.
 - **Always let the user know in which router scopes, `live_session`, and pipeline you are placing the route, AND SAY WHY**
 - `phx.gen.auth` assigns the `current_scope` assign - it **does not assign a `current_user` assign**
 - Always pass the assign `current_scope` to context modules as first argument. When performing queries, use `current_scope.user` to filter the query results

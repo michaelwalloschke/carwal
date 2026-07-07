@@ -29,6 +29,24 @@ defmodule CarWalWeb.UserSessionController do
     end
   end
 
+  # no-JS fallback: the login form posts user[email] natively when JS is
+  # disabled or the user submits before the LiveView socket connects.
+  # Same gate + flash as the LiveView (AC2: no enumeration).
+  defp create(conn, %{"user" => %{"email" => email}}, _info) when is_binary(email) do
+    Accounts.request_login_link(email, &url(~p"/users/log-in/#{&1}"))
+
+    conn
+    |> put_flash(
+      :info,
+      "Wenn deine E-Mail-Adresse hinterlegt ist, erhältst du gleich einen Anmeldelink."
+    )
+    |> redirect(to: ~p"/users/log-in")
+  end
+
+  defp create(conn, _params, _info) do
+    redirect(conn, to: ~p"/users/log-in")
+  end
+
   def delete(conn, _params) do
     conn
     |> put_flash(:info, "Erfolgreich abgemeldet.")

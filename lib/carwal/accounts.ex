@@ -8,6 +8,8 @@ defmodule CarWal.Accounts do
 
   import Ecto.Query, warn: false
 
+  require Logger
+
   alias CarWal.Repo
   alias CarWal.Accounts.{User, UserToken, UserNotifier}
 
@@ -171,19 +173,26 @@ defmodule CarWal.Accounts do
   sign-up path).
   """
   def login_user_by_magic_link(token) do
-    {:ok, query} = UserToken.verify_magic_link_token_query(token)
+    case UserToken.verify_magic_link_token_query(token) do
+      {:ok, query} ->
+        case Repo.one(query) do
+          {%User{confirmed_at: nil} = user, _token} ->
+            user
+            |> User.confirm_changeset()
+            |> update_user_and_delete_all_tokens()
 
-    case Repo.one(query) do
-      {%User{confirmed_at: nil} = user, _token} ->
-        user
-        |> User.confirm_changeset()
-        |> update_user_and_delete_all_tokens()
+          {user, token} ->
+            # delete_all, not delete!: a concurrent second use of the same link
+            # (double-click, two tabs) is a no-op instead of a StaleEntryError 500.
+            Repo.delete_all(from(t in UserToken, where: t.id == ^token.id))
+            {:ok, {user, []}}
 
-      {user, token} ->
-        Repo.delete!(token)
-        {:ok, {user, []}}
+          nil ->
+            {:error, :not_found}
+        end
 
-      nil ->
+      # the raw POST param may not even be base64url — invalid link, not a crash
+      :error ->
         {:error, :not_found}
     end
   end
@@ -211,8 +220,52 @@ defmodule CarWal.Accounts do
   def deliver_login_instructions(%User{} = user, magic_link_url_fun)
       when is_function(magic_link_url_fun, 1) do
     {encoded_token, user_token} = UserToken.build_email_token(user, "login")
-    Repo.insert!(user_token)
-    UserNotifier.deliver_login_instructions(user, magic_link_url_fun.(encoded_token))
+    user_token = Repo.insert!(user_token)
+
+    case UserNotifier.deliver_login_instructions(user, magic_link_url_fun.(encoded_token)) do
+      {:ok, _mail} = ok ->
+        ok
+
+      {:error, _reason} = error ->
+        # a failed send must not leave a token behind that blocks the
+        # request_login_link/2 throttle for the next 15 minutes
+        Repo.delete_all(from(t in UserToken, where: t.id == ^user_token.id))
+        error
+    end
+  end
+
+  @doc """
+  Requests a magic-link login mail for the given email address.
+
+  Single entry point for the public login form (LiveView submit and the no-JS
+  controller fallback). Always returns `:ok` so the response never discloses
+  whether an email is seeded (AC2, FR10: no sign-up path). Delivery is gated
+  on a seeded user, throttled to one unexpired link per member, and failures
+  are logged — the UI must stay identical either way.
+  """
+  def request_login_link(email, magic_link_url_fun)
+      when is_binary(email) and is_function(magic_link_url_fun, 1) do
+    user = get_user_by_email(email)
+
+    cond do
+      is_nil(user) ->
+        :ok
+
+      # ponytail: throttle = one live link per member (the 15-min token window);
+      # add per-IP limiting only if the app ever opens beyond the family.
+      Repo.exists?(UserToken.unexpired_login_token_query(user)) ->
+        :ok
+
+      true ->
+        case deliver_login_instructions(user, magic_link_url_fun) do
+          {:ok, _mail} ->
+            :ok
+
+          {:error, reason} ->
+            Logger.error("magic-link delivery failed for user #{user.id}: #{inspect(reason)}")
+            :ok
+        end
+    end
   end
 
   @doc """

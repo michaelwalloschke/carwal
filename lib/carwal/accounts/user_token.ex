@@ -153,6 +153,17 @@ defmodule CarWal.Accounts.UserToken do
     end
   end
 
+  @doc """
+  Query for an unexpired magic-link ("login") token belonging to the user.
+
+  Used to throttle magic-link requests to one live link per member.
+  """
+  def unexpired_login_token_query(user) do
+    from t in UserToken,
+      where: t.user_id == ^user.id and t.context == "login",
+      where: t.inserted_at > ago(^@magic_link_validity_in_minutes, "minute")
+  end
+
   defp by_token_and_context_query(token, context) do
     from UserToken, where: [token: ^token, context: ^context]
   end
