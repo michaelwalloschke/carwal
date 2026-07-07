@@ -55,6 +55,16 @@ Items deferred from code reviews and other workflows. Each entry: where it came 
 - `:health` pipeline accepts `["text","html","json"]` [`lib/carwal_web/router.ex:21`] — spec wanted minimal `:accepts`; "html" harmless for a probe (browser GET returns `ok` text). Narrow to `["json"]` on a cleanup pass. Nit.
 - `HealthController` sets no `Content-Type` [`lib/carwal_web/controllers/health_controller.ex:7`] — `send_resp(conn, 200, "ok")` leaves default; probes don't care. Optional: `put_resp_content_type(conn, "text/plain")`. Nit.
 
+## Deferred from: code review of story-1.4 (2026-07-07)
+
+- source_spec: `_bmad-output/implementation-artifacts/1-4-pwa-install-push-foundation.md`
+- `sw.js` notification-click focus logic is moot since push payload `data.url` is hardcoded to `'/'` [`priv/static/sw.js:8,18`] — real fix belongs with the notification-content stories that give pushes an actual target route. → Stories 3.3/3.4.
+- No `pushsubscriptionchange` listener in `sw.js` to handle silent browser-side key rotation [`priv/static/sw.js`] — low-probability edge case, not exercised by any current flow.
+- No `endpoint` length validation before insert (Postgres btree index row-size limit ~2704 bytes) [`lib/carwal/notifications/push_subscription.ex`] — real W3C push service endpoints are far under this in practice.
+- `list_subscriptions_for_user/1` unbounded, no ordering/limit [`lib/carwal/notifications.ex:42`] — fine at family-app device-count scale (a handful of devices per user).
+- `navigator.serviceWorker.ready` await has no timeout in `push.js` [`assets/js/push.js:40`] — hangs the enable-button flow silently if SW registration stalls; low-probability.
+- `config/test.exs` uses one global `:web_push_client` stub for the whole suite instead of per-test override [`config/test.exs`] — works today since callers can pass `send_fun` directly; revisit if a test needs per-test failure injection.
+
 ## Deferred from: code review of story 1.3 — Pass 3 (`/bmad-code-review`, 2026-07-07)
 
 - source_spec: `_bmad-output/implementation-artifacts/1-3-deploy-to-the-vps-over-https.md`

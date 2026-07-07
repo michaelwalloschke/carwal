@@ -16,9 +16,14 @@ Before running your first deployment, create a `.env.prod` file on the target VP
 *   `SMTP_USERNAME`: Username for the sovereign mailbox SMTP relay (e.g., mailbox.org or Posteo).
 *   `SMTP_PASSWORD`: Password for the SMTP relay.
 *   `POSTGRES_PASSWORD`: The superuser password for the PostgreSQL database container. Must match the password specified in `DATABASE_URL`.
+*   `VAPID_PUBLIC_KEY`: The public key for VAPID Web Push notifications.
+    *   *Generation*: Generate locally using `mix run -e 'IO.inspect(ExNudge.generate_vapid_keys())'`.
+*   `VAPID_PRIVATE_KEY`: The private key for VAPID Web Push notifications.
+    *   *Generation*: Generate locally alongside `VAPID_PUBLIC_KEY`.
 
 ### Optional/Configurable variables
 
+*   `VAPID_SUBJECT`: Contact URI (usually a `mailto:`) included in the VAPID header. Defaults to `"mailto:" <> MAIL_FROM` (derived from SMTP_USERNAME/MAIL_FROM).
 *   `SMTP_HOST`: The host of the sovereign SMTP relay. Defaults to `smtp.mailbox.org`.
 *   `SMTP_PORT`: The port of the SMTP relay. Defaults to `587` (STARTTLS).
 *   `MAIL_FROM`: The sender email address. Must be owned by the SMTP account. Defaults to the value of `SMTP_USERNAME`.

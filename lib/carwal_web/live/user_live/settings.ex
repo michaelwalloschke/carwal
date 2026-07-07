@@ -31,6 +31,16 @@ defmodule CarWalWeb.UserLive.Settings do
         />
         <.button variant="primary" phx-disable-with="Wird geändert...">E-Mail ändern</.button>
       </.form>
+
+      <div class="mt-8 text-center border-t border-base-300 pt-6">
+        <.link
+          navigate={~p"/users/push"}
+          class="btn btn-outline btn-sm"
+          id="link-to-push-settings"
+        >
+          {gettext("Push-Benachrichtigungen verwalten")}
+        </.link>
+      </div>
     </Layouts.app>
     """
   end

@@ -21,6 +21,14 @@ defmodule CarWalWeb.Router do
     plug :accepts, ["text", "html", "json"]
   end
 
+  pipeline :web_push do
+    plug :accepts, ["json"]
+    plug :fetch_session
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+    plug :fetch_current_scope_for_user
+  end
+
   scope "/", CarWalWeb do
     pipe_through :health
 
@@ -64,7 +72,14 @@ defmodule CarWalWeb.Router do
       on_mount: [{CarWalWeb.UserAuth, :require_authenticated}] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
+      live "/users/push", UserLive.PushSettings, :edit
     end
+  end
+
+  scope "/push", CarWalWeb do
+    pipe_through [:web_push]
+    post "/subscribe", PushController, :subscribe
+    post "/unsubscribe", PushController, :unsubscribe
   end
 
   scope "/", CarWalWeb do
