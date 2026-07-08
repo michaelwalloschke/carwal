@@ -74,16 +74,15 @@ RUN mix release
 FROM ${RUNNER_IMAGE} AS final
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 locales ca-certificates curl \
+  && apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 
-# Set the locale
-RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen \
-  && locale-gen
-
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
-ENV LC_ALL=en_US.UTF-8
+# No locales package / locale-gen: CarWal's i18n runs entirely through Gettext
+# (in-process) and dates through the `tz` library, so no OS locale data is
+# needed. BEAM still needs to know filenames/paths are UTF-8 (otherwise it
+# assumes latin1 and warns/misbehaves on non-ASCII paths) — +fnu covers that
+# without the locale package's build cost.
+ENV ELIXIR_ERL_OPTIONS="+fnu"
 
 WORKDIR "/app"
 RUN chown nobody /app

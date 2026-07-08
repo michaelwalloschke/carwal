@@ -54,9 +54,9 @@ development_status:
   1-3-deploy-to-the-vps-over-https: done
   1-4-pwa-install-push-foundation: done
   1-5-backup-first-restore-rehearsal: done
-  epic-1-retrospective: optional
-  epic-2: backlog
-  2-1-throwaway-ingestion-spike: backlog
+  epic-1-retrospective: done
+  epic-2: in-progress
+  2-1-throwaway-ingestion-spike: in-progress
   2-2-entry-core-agenda-view: backlog
   2-3-ical-poller-for-both-schools: backlog
   2-4-email-poller-with-sender-whitelist: backlog
@@ -81,3 +81,21 @@ development_status:
   6-1-llm-provider-on-demand-suggestions: backlog
   6-2-proactive-occasion-suggestions: backlog
   epic-6-retrospective: optional
+
+action_items:
+  - epic: 1
+    action: "Apply the read_env/raise-on-missing-prod-env pattern to all new Epic 2 env-configured values (feed URLs, sender whitelist in Stories 2.3/2.4) from the first implementation pass, not just after review."
+    owner: "Amelia"
+    status: open
+  - epic: 1
+    action: "Verify gettext routing for new user-facing strings during implementation, not only in code review."
+    owner: "Amelia"
+    status: open
+  - epic: 1
+    action: "Mirror every review- or Dev-Notes-deferred item into deferred-work.md with a target story - no repeat of the Story 1.5 gap."
+    owner: "Amelia"
+    status: open
+  - epic: 1
+    action: "Re-exercise restore.sh's remote-host scratch path against a real second host once available."
+    owner: "Michael (operator)"
+    status: open

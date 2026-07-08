@@ -5,6 +5,22 @@ This is a web application written using the Phoenix web framework.
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues
 - Use the already included and available `:req` (`Req`) library for HTTP requests, **avoid** `:httpoison`, `:tesla`, and `:httpc`. Req is included by default and is the preferred HTTP client for Phoenix apps
 
+### CarWal team learnings (Epic 1 retrospective, 2026-07-07)
+
+- **Runtime env vars:** parse with the `read_env` empty-string-safe helper pattern established in Story 1.2 (SMTP creds) and reused for PORT/POOL_SIZE/PHX_HOST (1.3) and VAPID keys (1.4). A bare `System.get_env/2` treats a set-but-empty var as present and crashes on `String.to_integer("")` — this bit the team three times across Stories 1.1/1.3 before the pattern stuck. Apply it to any new env-configured value (e.g. Epic 2 feed URLs, sender whitelist) from the first pass, not after review catches it.
+- **Required-prod-env contract:** anything that must not silently default in prod (`SECRET_KEY_BASE`-style) should `raise` on missing, mirroring SMTP creds (1.2), PHX_HOST/PORT (1.3), VAPID keys (1.4) — a consistent, reused invariant, not reinvented per story.
+- **gettext compliance:** German-string/gettext-routing gaps slipped through the first implementation pass in Stories 1.1 and 1.2 and were only caught in code review. Verify gettext routing for new user-facing strings during implementation, not just review.
+- **Defer discipline:** every code-review-deferred item must be mirrored into `_bmad-output/implementation-artifacts/deferred-work.md` with its target story — this held for 4 of 5 Epic 1 stories; Story 1.5 missed one (SSH hardening) at first pass. Don't let a "deferred, don't build speculatively" note live only in a story's Dev Notes.
+
+### Architecture
+
+- Six Phoenix contexts under `lib/carwal/`, one owner per table, cross-context access only through the owning context's public functions: `Accounts` (users) · `Entries` (entry, entry_revisions) · `Ingestion` (feed state, writes entries only via `Entries`) · `Chat` (messages) · `Location` (persists nothing, ever) · `Notifications` (push_subscriptions). Binding invariants: `_bmad-output/planning-artifacts/architecture/architecture-carwal-2026-07-05/ARCHITECTURE-SPINE.md`.
+- German is the default locale (`gettext`); all user-facing strings go through `gettext()` from the first implementation pass, not patched in later.
+
+### Local dev gotcha
+
+- Local Postgres runs on **port 5433**, not the Postgres default 5432 (`config/dev.exs`, `config/test.exs`) — avoids a collision with another project's container on this host. `docker run ... -p 5433:5432 postgres:18`, not `-p 5432:5432`.
+
 ### Phoenix v1.8 guidelines
 
 - **Always** begin your LiveView templates with `<Layouts.app flash={@flash} ...>` which wraps all inner content
