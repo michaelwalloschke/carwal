@@ -8,7 +8,7 @@ two German school apps (IServ, Schulmanager) via iCal + email.
 Requirements: Elixir 1.20 / OTP 27+ (see `.tool-versions`), Docker.
 
 * Start PostgreSQL 18:
-  `docker run -d --name carwal-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:18`
+  `docker run -d --name carwal-pg -e POSTGRES_PASSWORD=postgres -p 5433:5432 postgres:18`
 * Run `mix setup` to install and setup dependencies
 * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
 
