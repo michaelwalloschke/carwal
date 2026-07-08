@@ -23,7 +23,7 @@ All four land in the **same single CarWal app mailbox** — `yugo` (the IMAP pol
 2. Open the **„Kalender"** module in the main navigation.
 3. In the Terminübersicht (event overview), look at the **bottom left**. Click **„Kalender abonnieren"**.
 4. Schulmanager shows a dialog **„Um eine einzelne Kategorie als Kalender zu abonnieren"** listing one URL per category, in the form:
-   ```
+   ```text
    https://login.schulmanager-online.de/ical/calendar/<token>/<category-id>
    ```
    Categories seen: Allgemeine Termine, Praktikum, Präventionstermine, Prüfungen, Termine für Schüler, Ferien/Feiertage. **All of them share the same `<token>`** — only the trailing category ID differs.
