@@ -12,21 +12,25 @@ You need three things:
 
 ---
 
-## Part A — Schulmanager Online: iCal subscription URL
+## Part A — Schulmanager Online: iCal subscription URLs
+
+**Correction (2026-07-08, confirmed against a real account):** Schulmanager does **not** give you one merged calendar URL. It gives you **one URL per category** — a whole list. Deep research assumed a single feed; the real UI shows otherwise.
 
 1. Log in to [schulmanager-online.de](https://www.schulmanager-online.de/) with the guardian account.
 2. Open the **„Kalender"** module in the main navigation.
 3. In the Terminübersicht (event overview), look at the **bottom left**. Click **„Kalender abonnieren"**.
-4. Schulmanager shows a subscription URL. It looks like:
+4. Schulmanager shows a dialog **„Um eine einzelne Kategorie als Kalender zu abonnieren"** listing one URL per category, in the form:
    ```
-   https://login.schulmanager-online.de/ical/calendar/<token>
+   https://login.schulmanager-online.de/ical/calendar/<token>/<category-id>
    ```
-   or with query params:
-   ```
-   https://login.schulmanager-online.de/ics/<id>?user=<uid>&password=<token>
-   ```
-   Both forms have been seen in the wild — copy exactly what's shown, don't guess the format.
-5. Copy the **entire URL**. This is `SCHULMANAGER_ICAL_URL`.
+   Categories seen: Allgemeine Termine, Praktikum, Präventionstermine, Prüfungen, Termine für Schüler, Ferien/Feiertage. **All of them share the same `<token>`** — only the trailing category ID differs.
+5. **Copy 3 of the 6 URLs** (recommended default — covers school-day-to-day without noise; skip if your family's calendar needs differ):
+   - **Allgemeine Termine** → `SCHULMANAGER_ICAL_URL_ALLGEMEIN`
+   - **Termine für Schüler** → `SCHULMANAGER_ICAL_URL_SCHUELER`
+   - **Ferien/Feiertage** → `SCHULMANAGER_ICAL_URL_FERIEN`
+   - Skipped: Praktikum, Präventionstermine, Prüfungen — narrower/less frequent, not worth the extra polling for a family calendar. Add later the same way if that changes.
+
+**If you ever regenerate the token** (via „Neues Passwort generieren" on that same screen), **all 6 URLs change together** — you can't rotate one category without rotating all of them.
 
 **Multiple children at the same school:** if you've merged multiple children into one guardian account (via „Code hinzufügen" in the profile menu), one subscription URL likely returns all of them merged — Story 2.1 will confirm this empirically. Copy just the one URL from the merged account first.
 
@@ -85,7 +89,9 @@ Once you have all three (or as many as your school setup allows), set these as e
 
 ```bash
 export ISERV_ICAL_URL="<the IServ Link-Freigabe URL from Part B>"
-export SCHULMANAGER_ICAL_URL="<the Schulmanager subscription URL from Part A>"
+export SCHULMANAGER_ICAL_URL_ALLGEMEIN="<Allgemeine Termine URL from Part A>"
+export SCHULMANAGER_ICAL_URL_SCHUELER="<Termine für Schüler URL from Part A>"
+export SCHULMANAGER_ICAL_URL_FERIEN="<Ferien/Feiertage URL from Part A>"
 export SPIKE_IMAP_SERVER="<your sovereign mailbox IMAP host>"
 export SPIKE_IMAP_USER="<the app mailbox address>"
 export SPIKE_IMAP_PASSWORD="<the app mailbox password>"

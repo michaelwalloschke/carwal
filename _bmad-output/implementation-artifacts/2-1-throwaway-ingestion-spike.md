@@ -27,8 +27,8 @@ so that the riskiest unknowns are burned down before any production ingestion co
 - [ ] Task 2: Add throwaway deps (AC: #1, #2)
   - [ ] Add `{:ical, "~> 2.0"}` and `{:yugo, "~> 1.0"}` to `mix.exs` deps, `mix deps.get`.
 - [ ] Task 3: iCal spike task (AC: #1)
-  - [ ] Create `lib/mix/tasks/spike.ical.ex` (`Mix.Tasks.Spike.Ical`), fetch both feed URLs (`Req.get!/1`) and parse each with `ICal.from_ics/1`.
-  - [ ] Print event count per feed and one sample event.
+  - [ ] Create `lib/mix/tasks/spike.ical.ex` (`Mix.Tasks.Spike.Ical`), fetch **all configured feed URLs** (`Req.get!/1`) and parse each with `ICal.from_ics/1` — Schulmanager alone is now 3 feeds (see Dev Notes → Config), plus the one IServ feed. Iterate the list, don't hardcode two.
+  - [ ] Print event count per feed and one sample event, labeled by feed name (e.g. `[schulmanager:allgemeine_termine]`, `[schulmanager:ferien_feiertage]`, `[iserv]`) so findings are traceable to a specific feed.
   - [ ] Find at least one recurring event (has `RRULE`); expand it via `ICal.Recurrence.from_ics/1` + `ICal.Recurrence.stream/2` and print the first few expanded occurrences. Note whether the feed emits RRULE at all or ships pre-expanded flat VEVENTs (both platforms: undocumented upstream, must observe directly).
   - [ ] **UID stability check:** poll each feed twice (a few minutes apart is enough for the spike; no edit required to prove basic stability, but if there's time, edit one event in the source app between polls and re-poll) — diff the `UID` values. This determines whether `UID` is safe as `external_uid` for Story 2.3, or whether a composite fallback key (hash of `UID+DTSTART+SUMMARY`) is needed.
   - [ ] **Timezone check:** inspect raw ICS bytes for a `VTIMEZONE` block vs. `Z`-suffixed UTC vs. floating local time; if possible, capture one event around a DST boundary (late March / late October) to catch off-by-one-hour bugs.
@@ -48,7 +48,7 @@ so that the riskiest unknowns are burned down before any production ingestion co
 
 - This is the one story in the whole roadmap explicitly allowed to be throwaway: no context module, no schema, no LiveView, no production wiring. Two `Mix.Tasks.*` files under `lib/mix/tasks/` is the full footprint. Resist the urge to build `Ingestion` context scaffolding here — that's Story 2.2/2.3's job.
 - **Real feeds only.** The story exists to burn down unknowns in the *actual* IServ/Schulmanager output — fixture ICS files or a fake mailbox would defeat the purpose. If the operator hasn't extracted the real feed handles yet (PRD Open Questions, epics.md Epic 2 prerequisite), this story is blocked — say so, don't fabricate test data.
-- **Config:** read feed URLs and mailbox credentials (`ISERV_ICAL_URL`, `SCHULMANAGER_ICAL_URL`, `SPIKE_IMAP_SERVER`, `SPIKE_IMAP_USER`, `SPIKE_IMAP_PASSWORD`) using the same empty-string-safe `read_env` pattern established in `config/runtime.exs:5-10` — a bare `System.get_env/1`/`System.fetch_env!/1` treats a set-but-empty var as present and crashes downstream (Epic 1 retro learning, hit 3× in Stories 1.1/1.3). `read_env` isn't a shared module, it's a local anonymous fn — copy the same 5-line pattern into the spike task and fail fast (`raise`) when a required var resolves to `nil`, mirroring the required-prod-env contract used for `SECRET_KEY_BASE`/VAPID keys. Do not commit real credentials.
+- **Config:** read feed URLs and mailbox credentials using the same empty-string-safe `read_env` pattern established in `config/runtime.exs:5-10`. **Schulmanager exports one ICS feed per category** (discovered 2026-07-08 — the deep-research assumption of a single merged feed was wrong), not one URL total. Operator decision: ingest 3 of the 6 available categories — `ISERV_ICAL_URL`, `SCHULMANAGER_ICAL_URL_ALLGEMEIN` (Allgemeine Termine), `SCHULMANAGER_ICAL_URL_SCHUELER` (Termine für Schüler), `SCHULMANAGER_ICAL_URL_FERIEN` (Ferien/Feiertage), `SPIKE_IMAP_SERVER`, `SPIKE_IMAP_USER`, `SPIKE_IMAP_PASSWORD`. Skipped categories (Praktikum, Präventionstermine, Prüfungen) — too narrow/infrequent for a family calendar, revisit if the mother wants them later. Note for Story 2.3: all 3 Schulmanager URLs share the **same access token** — if the operator ever regenerates it, all 3 URLs change together, not independently. — a bare `System.get_env/1`/`System.fetch_env!/1` treats a set-but-empty var as present and crashes downstream (Epic 1 retro learning, hit 3× in Stories 1.1/1.3). `read_env` isn't a shared module, it's a local anonymous fn — copy the same 5-line pattern into the spike task and fail fast (`raise`) when a required var resolves to `nil`, mirroring the required-prod-env contract used for `SECRET_KEY_BASE`/VAPID keys. Do not commit real credentials.
 - Deps not yet in `mix.exs`: add `{:ical, "~> 2.0"}` and `{:yugo, "~> 1.0"}` (spine stack pins). `Req` is already a dep (`~> 0.5`) — use it for the HTTP fetch of the ICS feeds, no new HTTP client.
 
 ### ical (`~> 2.0`) API — confirmed against hexdocs.pm/GitHub (expothecary/ical)
@@ -94,7 +94,7 @@ end
 
 Desk research (3 independent passes, official docs + community sources, see `2-1-deep-research-prompt.md`) confirmed the following are **not documented anywhere upstream** and can only be resolved by running this spike against real feeds/mail:
 
-- **Schulmanager:** RRULE vs. pre-expanded recurrence; timezone form (`VTIMEZONE`/UTC/floating) + DST correctness; `UID` stability across polls/edits; per-child vs. per-account feed aggregation for multi-child parent accounts; umlaut/encoding fidelity; URL regeneration/revocation behavior.
+- **Schulmanager:** RRULE vs. pre-expanded recurrence; timezone form (`VTIMEZONE`/UTC/floating) + DST correctness; `UID` stability across polls/edits; per-child vs. per-account feed aggregation for multi-child parent accounts; umlaut/encoding fidelity; URL regeneration/revocation behavior; whether `UID`s collide or stay distinct across the 3 separate category feeds for the same child.
 - **IServ (calendar):** RRULE/`EXDATE`/`RECURRENCE-ID` serialization in the exported ICS; `UID` stability across series edits and IServ version upgrades.
 - **IServ (mail):** whether forwarding preserves `From`/`Message-ID`/`Date` verbatim or rewrites them (SRS/envelope); exact MIME structure of forwarded Elternbrief-notification mail.
 
@@ -105,6 +105,15 @@ Already **confirmed** by desk research (no spike time needed to re-verify, just 
 - IServ Elternbriefe are **not** emailed with content — only a notification mail ("IServ Benachrichtigungssystem" sender) pointing back to the portal; the actual letter/PDF requires portal login and is out of reach for an email poller. Schulmanager Elternbriefe, by contrast, **are** real emails, potentially with PDF attachments.
 - IServ mail forwarding can be disabled or domain-restricted per-school by the admin; when that happens the only fallback is direct IMAP polling of the IServ mailbox itself (relevant for Story 2.4 design, not this spike).
 - Both platforms warn that feed propagation can lag by up to a day (Schulmanager, explicit) or hit nightly maintenance windows (~04:00–06:00 for self-hosted IServ instances) — informs Story 2.3's poll interval and Story 2.5's health-check tolerance, not this spike.
+- **Schulmanager is multi-feed, not single-feed** (confirmed empirically 2026-07-08, corrects the deep-research assumption): the "Kalender abonnieren" screen lists one ICS URL per category (Allgemeine Termine, Praktikum, Präventionstermine, Prüfungen, Termine für Schüler, Ferien/Feiertage), all sharing one access token. CarWal ingests 3 of them (see Config above); Story 2.3's poller must loop over a *list* of Schulmanager feed URLs, not assume one.
+
+### Prerequisite status (2026-07-08)
+
+- ✅ Schulmanager feed URLs obtained (3 of 6 categories, see Config).
+- ✅ IServ Elternbrief notification format observed in the wild (matches deep-research prediction exactly — notification-only, sender "IServ Benachrichtigungssystem", link back to portal, no content). Arrived in a personal mailbox, not yet the CarWal app mailbox.
+- ❌ IServ ICS calendar Link-Freigabe URL — not yet obtained.
+- ❌ IServ mail forwarding to the CarWal app mailbox — not yet configured; the observed Elternbrief notification is sitting in a personal inbox, not the app mailbox `yugo` will poll.
+- **Task 1 still blocks** on the two ❌ items above.
 
 ### Architecture guardrails that still apply
 
