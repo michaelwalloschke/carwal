@@ -113,7 +113,8 @@ Already **confirmed** by desk research (no spike time needed to re-verify, just 
 - ✅ IServ Elternbrief notification format observed in the wild (matches deep-research prediction exactly — notification-only, sender "IServ Benachrichtigungssystem", link back to portal, no content). Arrived in a personal mailbox, not yet the CarWal app mailbox.
 - ❌ IServ ICS calendar Link-Freigabe URL — not yet obtained.
 - ❌ IServ mail forwarding to the CarWal app mailbox — not yet configured; the observed Elternbrief notification is sitting in a personal inbox, not the app mailbox `yugo` will poll.
-- **Task 1 still blocks** on the two ❌ items above.
+- ❌ Schulmanager Elternbriefe routing — Schulmanager emails the account's registered address directly (currently the mother's personal web.de inbox), no IServ-style forwarding setting exists there. Decision: a web.de filter rule forwards Schulmanager-sender mail into the same CarWal app mailbox, rather than giving CarWal IMAP access to her personal account (see `docs/SCHOOL-FEED-SETUP.md` Part C.5). Not yet set up.
+- **Task 1 still blocks** on the three ❌ items above.
 
 ### Architecture guardrails that still apply
 

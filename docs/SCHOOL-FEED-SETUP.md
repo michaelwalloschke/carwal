@@ -4,11 +4,14 @@ Operator runbook for extracting the real IServ + Schulmanager Online integration
 
 **Why this matters:** Story 2.1 is explicitly forbidden from running against fixtures or mock data — it must hit the real feeds to burn down real unknowns (see `_bmad-output/implementation-artifacts/2-1-throwaway-ingestion-spike.md`). Nothing downstream (Story 2.3 iCal poller, Story 2.4 email poller) can be built correctly until this is done.
 
-You need three things:
+You need four things:
 
-1. **Schulmanager Online** — iCal subscription URL
+1. **Schulmanager Online** — iCal subscription URLs (one per category)
 2. **IServ** — ICS calendar Link-Freigabe URL
 3. **IServ** — mail forwarding to CarWal's app mailbox
+4. **Schulmanager Online** — Elternbriefe routed to CarWal's app mailbox (via a web.de filter rule, since Schulmanager emails the account's registered address directly rather than supporting a redirect)
+
+All four land in the **same single CarWal app mailbox** — `yugo` (the IMAP poller) only ever targets that one mailbox, never the mother's personal web.de account or the IServ mailbox directly. IServ and Schulmanager each get their mail there by forwarding at the source, not by CarWal polling multiple inboxes.
 
 ---
 
@@ -83,9 +86,30 @@ This forwards Elternbriefe notifications and other school mail to CarWal's dedic
 
 ---
 
+## Part C.5 — Schulmanager Elternbriefe: web.de filter rule
+
+Schulmanager doesn't have an IServ-style forwarding setting — it emails Elternbriefe straight to whatever address is registered on the guardian's Schulmanager account. Today that's the mother's personal **web.de** address, not CarWal's app mailbox. Two ways to fix that were considered:
+
+- ~~Give CarWal IMAP access to her personal web.de account~~ — rejected. CarWal's design (FR2) is built around a *dedicated* app mailbox with sender-whitelist filtering; polling her whole personal inbox would expose all her private mail to CarWal's IMAP client for no reason, and works against data-minimization.
+- **Add a web.de filter rule that forwards only Schulmanager mail to the app mailbox** — chosen. Narrow, source-scoped, her personal inbox and Schulmanager account settings stay untouched.
+
+Steps:
+
+1. Log in to [web.de](https://web.de/) webmail with the mother's account.
+2. Click the profile icon (her initials, top bar) → **„E-Mail-Einstellungen"**.
+3. In the left sidebar, open **„Filterregeln"**.
+4. Click **„Eigene Filterregeln erstellen"**.
+5. Condition: sender contains Schulmanager's sending domain. Confirm the exact `@`-domain from a real received Elternbrief's `From` header (don't guess it) — filtering on the domain is more reliable than matching subject text.
+6. Action: look for a **forward-to-address** action (web.de's own help docs don't spell out the exact action label beyond "Aktionen" — confirm the precise wording live in the UI, it wasn't documented) and set it to CarWal's app mailbox address.
+7. Save (**„Filterregel einrichten"**).
+
+**Verify:** the next real Schulmanager Elternbrief should land in both her web.de inbox (unless she configures the rule to move rather than copy) and CarWal's app mailbox. Don't fabricate a test message — same rule as Part C, wait for a real one.
+
+---
+
 ## Part D — Feeding the values to Story 2.1
 
-Once you have all three (or as many as your school setup allows), set these as environment variables in your local shell before running the spike (`mix spike.ical`, `mix spike.mail` — created by Story 2.1):
+Once you have everything above (or as many pieces as your school setup allows), set these as environment variables in your local shell before running the spike (`mix spike.ical`, `mix spike.mail` — created by Story 2.1):
 
 ```bash
 export ISERV_ICAL_URL="<the IServ Link-Freigabe URL from Part B>"
